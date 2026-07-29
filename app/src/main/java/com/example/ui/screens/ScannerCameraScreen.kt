@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -18,6 +20,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +41,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Crop
@@ -67,11 +71,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +95,7 @@ import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.util.DocumentQuad
 import com.example.util.OpenCvDocumentDetector
+import kotlinx.coroutines.delay
 
 @Composable
 fun ScannerCameraScreen(
@@ -113,6 +120,17 @@ fun ScannerCameraScreen(
 
     var detectedQuad by remember { mutableStateOf<DocumentQuad?>(null) }
     var autoCropEnabled by remember { mutableStateOf(true) }
+
+    var previewViewInstance by remember { mutableStateOf<PreviewView?>(null) }
+    var boundCamera by remember { mutableStateOf<Camera?>(null) }
+    var focusTapOffset by remember { mutableStateOf<Offset?>(null) }
+
+    LaunchedEffect(focusTapOffset) {
+        if (focusTapOffset != null) {
+            delay(1800)
+            focusTapOffset = null
+        }
+    }
 
     var scanTitle by remember { mutableStateOf("Scan_${System.currentTimeMillis()}") }
     var scanCategory by remember { mutableStateOf("Documents") }
@@ -207,13 +225,15 @@ fun ScannerCameraScreen(
 
                     try {
                         cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
+                        val camera = cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             cameraSelector,
                             preview,
                             capture,
                             imageAnalysis
                         )
+                        boundCamera = camera
+                        previewViewInstance = previewView
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -223,6 +243,61 @@ fun ScannerCameraScreen(
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        // Focus-on-Tap Touch Target Layer
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        focusTapOffset = offset
+                        val pView = previewViewInstance
+                        val cam = boundCamera
+                        if (pView != null && cam != null) {
+                            val factory = pView.meteringPointFactory
+                            val point = factory.createPoint(offset.x, offset.y)
+                            val action = FocusMeteringAction.Builder(
+                                point,
+                                FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+                            )
+                                .setAutoCancelDuration(3, java.util.concurrent.TimeUnit.SECONDS)
+                                .build()
+                            cam.cameraControl.startFocusAndMetering(action)
+                        }
+                    }
+                }
+        )
+
+        // Focus Reticle Indicator Overlay
+        val tapOffset = focusTapOffset
+        if (tapOffset != null) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val cx = tapOffset.x
+                val cy = tapOffset.y
+                val radius = 50f
+
+                // Reticle ring
+                drawCircle(
+                    color = Color(0xFF00F2FE),
+                    radius = radius,
+                    center = Offset(cx, cy),
+                    style = Stroke(width = 4f)
+                )
+                // Center focus point
+                drawCircle(
+                    color = Color(0xFF00F2FE),
+                    radius = 6f,
+                    center = Offset(cx, cy)
+                )
+                // Crosshair ticks
+                val len = 14f
+                val gap = radius + 6f
+                drawLine(Color(0xFF00F2FE), Offset(cx - gap - len, cy), Offset(cx - gap, cy), strokeWidth = 3f)
+                drawLine(Color(0xFF00F2FE), Offset(cx + gap, cy), Offset(cx + gap + len, cy), strokeWidth = 3f)
+                drawLine(Color(0xFF00F2FE), Offset(cx, cy - gap - len), Offset(cx, cy - gap), strokeWidth = 3f)
+                drawLine(Color(0xFF00F2FE), Offset(cx, cy + gap), Offset(cx, cy + gap + len), strokeWidth = 3f)
+            }
+        }
 
         // Real-Time OpenCV Quad Auto-Detection Glowing Canvas Overlay
         val quad = detectedQuad

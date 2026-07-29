@@ -2,10 +2,10 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val DarkBg = Color(0xFF05070A) // Ultra dark background canvas
-val DarkSurface = Color(0xFF0A0C12) // Card/container background
-val DarkSurfaceVariant = Color(0xFF111622) // Surface variant
-val DarkSurfaceElevated = Color(0xFF181F2E) // Surface elevated
+val DarkBg = Color(0xFF0F172A) // Dark Navy background canvas
+val DarkSurface = Color(0xFF1E293B) // Card/container background navy
+val DarkSurfaceVariant = Color(0xFF334155) // Surface variant slate
+val DarkSurfaceElevated = Color(0xFF475569) // Surface elevated
 
 val GlassBorder = Color(0x1AFFFFFF) // 10% white border
 val GlassBorderCyan = Color(0x3322D3EE) // 20% cyan border

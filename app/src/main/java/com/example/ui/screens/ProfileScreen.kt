@@ -20,11 +20,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -62,14 +66,17 @@ import com.example.ui.theme.NeonPurple
 import com.example.ui.theme.NeonTeal
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.ThemeMode
 
 @Composable
 fun ProfileScreen(
     viewModel: ScanProViewModel,
-    onNavigateToAuth: () -> Unit
+    onNavigateToAuth: () -> Unit,
+    onNavigateToSetupWizard: (() -> Unit)? = null
 ) {
     val currentUser by viewModel.currentUser.collectAsState()
     val storageUsed by viewModel.storageUsedBytes.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
 
     var showPremiumModal by remember { mutableStateOf(false) }
     var showSettingsModal by remember { mutableStateOf(false) }
@@ -243,18 +250,18 @@ fun ProfileScreen(
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Cloud Vault Storage", fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text("$usedMb MB / $totalGb GB", fontSize = 12.sp, color = TextSecondary)
+                        Text("Cloud Vault Storage", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("$usedMb MB / $totalGb GB", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     LinearProgressIndicator(
@@ -263,6 +270,105 @@ fun ProfileScreen(
                         color = CyanPrimary,
                         trackColor = Color(0x33FFFFFF)
                     )
+                }
+            }
+        }
+
+        // Theme Mode Selector Card
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CyanPrimary.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Palette,
+                                contentDescription = "Theme Mode",
+                                tint = CyanPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "App Theme Mode",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                "Dark, Light, or System Default",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val options = listOf(
+                            Triple("Dark", ThemeMode.DARK, Icons.Default.DarkMode),
+                            Triple("Light", ThemeMode.LIGHT, Icons.Default.LightMode),
+                            Triple("Default", ThemeMode.SYSTEM, Icons.Default.SettingsSuggest)
+                        )
+
+                        options.forEach { (label, mode, icon) ->
+                            val isSelected = themeMode == mode
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (isSelected) CyanPrimary else MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.outline,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable { viewModel.setThemeMode(mode) }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -300,6 +406,17 @@ fun ProfileScreen(
                     subtitle = "Select default scan languages",
                     color = NeonPurple,
                     onClick = { showSettingsModal = true }
+                )
+
+                ProfileOptionRow(
+                    icon = Icons.Default.Security,
+                    title = "App Permissions & Setup Wizard",
+                    subtitle = "Re-run First-Time setup & permissions",
+                    color = CyanPrimary,
+                    onClick = {
+                        viewModel.markSetupWizardCompleted(false)
+                        onNavigateToSetupWizard?.invoke()
+                    }
                 )
 
                 ProfileOptionRow(

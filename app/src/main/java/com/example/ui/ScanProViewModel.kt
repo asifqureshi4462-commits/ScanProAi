@@ -1,6 +1,7 @@
 package com.example.ui
 
 import android.app.Application
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
@@ -12,6 +13,7 @@ import com.example.data.auth.UserProfile
 import com.example.data.local.ChatMessageEntity
 import com.example.data.local.ScanProDatabase
 import com.example.data.local.ScannedDocument
+import com.example.ui.theme.ThemeMode
 import com.example.util.PdfEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,6 +50,32 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
     val authRepository = AuthRepository()
 
     val currentUser: StateFlow<UserProfile?> = authRepository.currentUser
+
+    // Preferences & Setup Wizard state
+    private val prefs = application.getSharedPreferences("scanpro_prefs", Context.MODE_PRIVATE)
+
+    val isSetupWizardCompleted = MutableStateFlow(
+        prefs.getBoolean("setup_wizard_completed", false)
+    )
+
+    fun markSetupWizardCompleted(completed: Boolean = true) {
+        prefs.edit().putBoolean("setup_wizard_completed", completed).apply()
+        isSetupWizardCompleted.value = completed
+    }
+
+    // Theme Mode (Dark, Light, System Default)
+    val themeMode = MutableStateFlow(
+        try {
+            ThemeMode.valueOf(prefs.getString("theme_mode", ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name)
+        } catch (e: Exception) {
+            ThemeMode.SYSTEM
+        }
+    )
+
+    fun setThemeMode(mode: ThemeMode) {
+        prefs.edit().putString("theme_mode", mode.name).apply()
+        themeMode.value = mode
+    }
 
     // Offline state
     val isOfflineMode = MutableStateFlow(false)

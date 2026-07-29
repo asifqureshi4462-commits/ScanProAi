@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -62,6 +63,7 @@ import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.OnboardingScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.ScannerCameraScreen
+import com.example.ui.screens.SetupWizardScreen
 import com.example.ui.screens.SplashScreen
 import com.example.ui.screens.ToolsScreen
 import com.example.ui.theme.CyanPrimary
@@ -82,6 +84,7 @@ enum class AppDestination {
     SPLASH,
     ONBOARDING,
     AUTH,
+    SETUP_WIZARD,
     MAIN_TABS,
     SCANNER_CAMERA,
     AI_CHAT,
@@ -91,6 +94,7 @@ enum class AppDestination {
 @Composable
 fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
     val context = LocalContext.current
+    val isSetupCompleted by viewModel.isSetupWizardCompleted.collectAsState()
 
     var currentDestination by remember { mutableStateOf(AppDestination.SPLASH) }
     var selectedTab by remember { mutableStateOf(0) } // 0: Home, 1: Files, 2: Scan, 3: Tools, 4: Profile
@@ -151,6 +155,19 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
             AuthScreen(
                 authRepository = viewModel.authRepository,
                 onAuthSuccess = {
+                    if (!isSetupCompleted) {
+                        currentDestination = AppDestination.SETUP_WIZARD
+                    } else {
+                        currentDestination = AppDestination.MAIN_TABS
+                    }
+                }
+            )
+        }
+
+        AppDestination.SETUP_WIZARD -> {
+            SetupWizardScreen(
+                onSetupComplete = {
+                    viewModel.markSetupWizardCompleted(true)
                     currentDestination = AppDestination.MAIN_TABS
                 }
             )
@@ -199,7 +216,8 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
             Scaffold(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(DarkBg),
+                    .background(MaterialTheme.colorScheme.background),
+                containerColor = MaterialTheme.colorScheme.background,
                 bottomBar = {
                     BottomNavWithCenterFab(
                         selectedTab = selectedTab,
@@ -245,7 +263,8 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
 
                         4 -> ProfileScreen(
                             viewModel = viewModel,
-                            onNavigateToAuth = { currentDestination = AppDestination.AUTH }
+                            onNavigateToAuth = { currentDestination = AppDestination.AUTH },
+                            onNavigateToSetupWizard = { currentDestination = AppDestination.SETUP_WIZARD }
                         )
 
                         else -> HomeScreen(
@@ -275,29 +294,33 @@ fun BottomNavWithCenterFab(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         NavigationBar(
-            containerColor = DarkSurface,
-            contentColor = CyanPrimary,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary,
             tonalElevation = 8.dp,
             modifier = Modifier
                 .navigationBarsPadding()
                 .fillMaxWidth()
                 .height(72.dp)
-                .border(1.dp, GlassBorder, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
         ) {
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
+            val indicatorColor = MaterialTheme.colorScheme.primaryContainer
+
             NavigationBarItem(
                 selected = selectedTab == 0,
                 onClick = { onTabSelected(0) },
                 icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
                 label = { Text("HOME", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = CyanPrimary,
-                    selectedTextColor = CyanPrimary,
-                    indicatorColor = Color(0x2222D3EE),
-                    unselectedIconColor = TextSecondary,
-                    unselectedTextColor = TextSecondary
+                    selectedIconColor = primaryColor,
+                    selectedTextColor = primaryColor,
+                    indicatorColor = indicatorColor,
+                    unselectedIconColor = unselectedColor,
+                    unselectedTextColor = unselectedColor
                 )
             )
 
@@ -307,11 +330,11 @@ fun BottomNavWithCenterFab(
                 icon = { Icon(Icons.Default.Folder, contentDescription = "Files") },
                 label = { Text("FILES", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = CyanPrimary,
-                    selectedTextColor = CyanPrimary,
-                    indicatorColor = Color(0x2222D3EE),
-                    unselectedIconColor = TextSecondary,
-                    unselectedTextColor = TextSecondary
+                    selectedIconColor = primaryColor,
+                    selectedTextColor = primaryColor,
+                    indicatorColor = indicatorColor,
+                    unselectedIconColor = unselectedColor,
+                    unselectedTextColor = unselectedColor
                 )
             )
 
@@ -326,8 +349,8 @@ fun BottomNavWithCenterFab(
                     modifier = Modifier
                         .size(58.dp)
                         .clip(CircleShape)
-                        .background(DarkBg)
-                        .border(3.dp, GlassBorder, CircleShape)
+                        .background(MaterialTheme.colorScheme.background)
+                        .border(3.dp, MaterialTheme.colorScheme.outline, CircleShape)
                         .clickable { onCenterScanClicked() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -358,11 +381,11 @@ fun BottomNavWithCenterFab(
                 icon = { Icon(Icons.Default.Build, contentDescription = "Tools") },
                 label = { Text("TOOLS", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = CyanPrimary,
-                    selectedTextColor = CyanPrimary,
-                    indicatorColor = Color(0x2222D3EE),
-                    unselectedIconColor = TextSecondary,
-                    unselectedTextColor = TextSecondary
+                    selectedIconColor = primaryColor,
+                    selectedTextColor = primaryColor,
+                    indicatorColor = indicatorColor,
+                    unselectedIconColor = unselectedColor,
+                    unselectedTextColor = unselectedColor
                 )
             )
 
@@ -372,11 +395,11 @@ fun BottomNavWithCenterFab(
                 icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
                 label = { Text("USER", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = CyanPrimary,
-                    selectedTextColor = CyanPrimary,
-                    indicatorColor = Color(0x2222D3EE),
-                    unselectedIconColor = TextSecondary,
-                    unselectedTextColor = TextSecondary
+                    selectedIconColor = primaryColor,
+                    selectedTextColor = primaryColor,
+                    indicatorColor = indicatorColor,
+                    unselectedIconColor = unselectedColor,
+                    unselectedTextColor = unselectedColor
                 )
             )
         }
