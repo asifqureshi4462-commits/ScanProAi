@@ -1,0 +1,6 @@
+{
+  "name": "ScanPro AI",
+  "description": "Advanced AI-Powered Document Scanner & PDF Utility Suite",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

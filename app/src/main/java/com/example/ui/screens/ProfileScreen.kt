@@ -1,0 +1,358 @@
+package com.example.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ui.ScanProViewModel
+import com.example.ui.theme.CyanPrimary
+import com.example.ui.theme.DarkBg
+import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.GlassBorder
+import com.example.ui.theme.NeonPurple
+import com.example.ui.theme.NeonTeal
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
+
+@Composable
+fun ProfileScreen(
+    viewModel: ScanProViewModel,
+    onNavigateToAuth: () -> Unit
+) {
+    val currentUser by viewModel.currentUser.collectAsState()
+    val storageUsed by viewModel.storageUsedBytes.collectAsState()
+
+    var showPremiumModal by remember { mutableStateOf(false) }
+    var showSettingsModal by remember { mutableStateOf(false) }
+
+    var appLockEnabled by remember { mutableStateOf(false) }
+    var cloudBackupEnabled by remember { mutableStateOf(true) }
+
+    val user = currentUser
+    val usedMb = (storageUsed ?: 125_000_000L) / (1024 * 1024)
+    val totalGb = (user?.storageLimitBytes ?: 5_000_000_000L) / (1024 * 1024 * 1024)
+    val storageProgress = (storageUsed ?: 125_000_000L).toFloat() / (user?.storageLimitBytes ?: 5_000_000_000L).toFloat()
+
+    // Premium Subscription Modal
+    if (showPremiumModal) {
+        AlertDialog(
+            onDismissRequest = { showPremiumModal = false },
+            containerColor = DarkSurface,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFF59E0B))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("ScanPro AI PRO", color = TextPrimary, fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column {
+                    Text("Unlock Unlimited Scans, 100 GB Cloud Vault & Full Gemini AI Document Assistant.", fontSize = 13.sp, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0x3300F2FE)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().border(1.dp, CyanPrimary, RoundedCornerShape(12.dp))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text("Pro Yearly Plan", fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("$29.99 / year (Save 50%)", fontSize = 13.sp, color = CyanPrimary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.authRepository.upgradeToPremium()
+                        showPremiumModal = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                ) {
+                    Text("Upgrade Now", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPremiumModal = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
+    }
+
+    // Settings Modal
+    if (showSettingsModal) {
+        AlertDialog(
+            onDismissRequest = { showSettingsModal = false },
+            containerColor = DarkSurface,
+            title = { Text("App Settings & Security", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("App Lock PIN / Biometrics", color = TextPrimary)
+                        Switch(
+                            checked = appLockEnabled,
+                            onCheckedChange = { appLockEnabled = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyanPrimary)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Auto Cloud Backup & Sync", color = TextPrimary)
+                        Switch(
+                            checked = cloudBackupEnabled,
+                            onCheckedChange = { cloudBackupEnabled = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyanPrimary)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showSettingsModal = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                ) {
+                    Text("Done", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBg)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        // User Profile Header Card
+        item {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, GlassBorder, RoundedCornerShape(20.dp))
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(CyanPrimary, NeonTeal, NeonPurple)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.Black, modifier = Modifier.size(48.dp))
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = user?.displayName ?: "Alex Vance",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary
+                    )
+
+                    Text(
+                        text = user?.email ?: "alex.vance@scanpro.ai",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0x2200F2FE))
+                            .border(1.dp, CyanPrimary, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                    ) {
+                        Text("PRO MEMBER • UNLIMITED VAULT", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CyanPrimary)
+                    }
+                }
+            }
+        }
+
+        // Storage Card
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Cloud Vault Storage", fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text("$usedMb MB / $totalGb GB", fontSize = 12.sp, color = TextSecondary)
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { storageProgress.coerceIn(0.01f, 1.0f) },
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                        color = CyanPrimary,
+                        trackColor = Color(0x33FFFFFF)
+                    )
+                }
+            }
+        }
+
+        // Settings Menu List
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ProfileOptionRow(
+                    icon = Icons.Default.Star,
+                    title = "ScanPro AI PRO Subscription",
+                    subtitle = "Manage plan, billing & limits",
+                    color = Color(0xFFF59E0B),
+                    onClick = { showPremiumModal = true }
+                )
+
+                ProfileOptionRow(
+                    icon = Icons.Default.Security,
+                    title = "App Lock & Security Settings",
+                    subtitle = "PIN lock, biometrics & encryption",
+                    color = CyanPrimary,
+                    onClick = { showSettingsModal = true }
+                )
+
+                ProfileOptionRow(
+                    icon = Icons.Default.CloudSync,
+                    title = "Cloud Backup & Vault Sync",
+                    subtitle = "Firebase cloud sync & backup",
+                    color = NeonTeal,
+                    onClick = { showSettingsModal = true }
+                )
+
+                ProfileOptionRow(
+                    icon = Icons.Default.Language,
+                    title = "OCR & App Language",
+                    subtitle = "Select default scan languages",
+                    color = NeonPurple,
+                    onClick = { showSettingsModal = true }
+                )
+
+                ProfileOptionRow(
+                    icon = Icons.Default.Logout,
+                    title = "Log Out",
+                    subtitle = "Sign out of ScanPro AI Vault",
+                    color = MaterialTheme.colorScheme.error,
+                    onClick = {
+                        viewModel.authRepository.logout()
+                        onNavigateToAuth()
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileOptionRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, GlassBorder, RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(color.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+                Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+            }
+        }
+    }
+}
