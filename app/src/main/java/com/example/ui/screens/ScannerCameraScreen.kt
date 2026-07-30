@@ -78,6 +78,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -123,7 +124,18 @@ fun ScannerCameraScreen(
 
     var previewViewInstance by remember { mutableStateOf<PreviewView?>(null) }
     var boundCamera by remember { mutableStateOf<Camera?>(null) }
+    var cameraProviderInstance by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var focusTapOffset by remember { mutableStateOf<Offset?>(null) }
+
+    DisposableEffect(lifecycleOwner) {
+        onDispose {
+            try {
+                cameraProviderInstance?.unbindAll()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     LaunchedEffect(focusTapOffset) {
         if (focusTapOffset != null) {
@@ -188,11 +200,14 @@ fun ScannerCameraScreen(
         // CameraX Preview
         AndroidView(
             factory = { ctx ->
-                val previewView = PreviewView(ctx)
+                val previewView = PreviewView(ctx).apply {
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                }
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
 
                 cameraProviderFuture.addListener({
                     val cameraProvider = cameraProviderFuture.get()
+                    cameraProviderInstance = cameraProvider
                     val preview = Preview.Builder().build().also {
                         it.setSurfaceProvider(previewView.surfaceProvider)
                     }
@@ -567,7 +582,58 @@ fun ScannerCameraScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(60.dp))
+                // Last Captured Document Thumbnail Button
+                val lastCaptured = capturedBitmaps.lastOrNull()
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .border(
+                            width = 2.dp,
+                            color = if (lastCaptured != null) CyanPrimary else GlassBorder,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .clickable {
+                            if (capturedBitmaps.isNotEmpty()) {
+                                showSaveDialog = true
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (lastCaptured != null) {
+                        Image(
+                            bitmap = lastCaptured.asImageBitmap(),
+                            contentDescription = "Last captured document scan",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        // Page Count Badge
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(3.dp)
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(CyanPrimary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${capturedBitmaps.size}",
+                                color = Color.Black,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.PhotoLibrary,
+                            contentDescription = "No captures yet",
+                            tint = Color.White.copy(alpha = 0.5f),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
             }
         }
     }
