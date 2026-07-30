@@ -26,10 +26,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -169,28 +172,60 @@ fun HomeScreen(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Cloud Sync Button
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                            .clickable { },
-                        contentAlignment = Alignment.Center
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .clickable { }
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Notifications,
-                            contentDescription = "Notifications",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Cloud,
+                                contentDescription = "Cloud Sync",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Sync",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // PRO Badge Button
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(Color(0xFFF59E0B), Color(0xFFEF4444))
+                                )
+                            )
+                            .clickable { }
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "👑 PRO",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceVariant),
@@ -198,7 +233,7 @@ fun HomeScreen(
                     ) {
                         Text(
                             text = currentUser?.displayName?.take(2)?.uppercase() ?: "JD",
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -286,74 +321,95 @@ fun HomeScreen(
             }
         }
 
-        // Quick Tools Grid (2x2)
+        // Quick Actions Grid (2 rows x 4 items)
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // PDF Tools Card
-                QuickToolGridCard(
-                    title = "PDF Tools",
-                    subtitle = "Convert & Edit",
-                    icon = Icons.Default.PictureAsPdf,
-                    iconBg = MaterialTheme.colorScheme.primaryContainer,
-                    iconTint = MaterialTheme.colorScheme.primary,
-                    isHighlight = true,
-                    modifier = Modifier.weight(1f),
-                    onClick = onNavigateToTools
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "QUICK ACTIONS",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // AI Chat Card
-                QuickToolGridCard(
-                    title = "AI Chat",
-                    subtitle = "Analyze Docs",
-                    icon = Icons.Default.AutoAwesome,
-                    iconBg = MaterialTheme.colorScheme.secondaryContainer,
-                    iconTint = MaterialTheme.colorScheme.secondary,
-                    isHighlight = false,
-                    modifier = Modifier.weight(1f),
-                    onClick = onNavigateToAiChat
-                )
-            }
+                // Row 1
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CompactQuickActionItem(
+                        title = "Smart Scan",
+                        icon = Icons.Default.DocumentScanner,
+                        color = Color(0xFF06B6D4),
+                        modifier = Modifier.weight(1f),
+                        onClick = onNavigateToScan
+                    )
+                    CompactQuickActionItem(
+                        title = "PDF Tools",
+                        icon = Icons.Default.PictureAsPdf,
+                        color = Color(0xFFEF4444),
+                        modifier = Modifier.weight(1f),
+                        onClick = onNavigateToTools
+                    )
+                    CompactQuickActionItem(
+                        title = "Import Img",
+                        icon = Icons.Default.Image,
+                        color = Color(0xFF3B82F6),
+                        modifier = Modifier.weight(1f),
+                        onClick = onImportFileClicked
+                    )
+                    CompactQuickActionItem(
+                        title = "Import Files",
+                        icon = Icons.Default.UploadFile,
+                        color = Color(0xFF10B981),
+                        modifier = Modifier.weight(1f),
+                        onClick = onImportFileClicked
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // OCR Text Card
-                QuickToolGridCard(
-                    title = "OCR Text",
-                    subtitle = "Extract Data",
-                    icon = Icons.Default.Translate,
-                    iconBg = Color(0x33A855F7),
-                    iconTint = Color(0xFFA855F7),
-                    isHighlight = false,
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        val firstDoc = documents.firstOrNull()
-                        if (firstDoc != null) {
-                            viewModel.runAiOcrOnDocument(firstDoc)
-                            onNavigateToDocPreview(firstDoc)
-                        } else {
-                            onNavigateToScan()
+                // Row 2
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CompactQuickActionItem(
+                        title = "ID Card",
+                        icon = Icons.Default.Badge,
+                        color = Color(0xFFEC4899),
+                        modifier = Modifier.weight(1f),
+                        onClick = onNavigateToTools
+                    )
+                    CompactQuickActionItem(
+                        title = "OCR Text",
+                        icon = Icons.Default.Translate,
+                        color = Color(0xFFA855F7),
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            val firstDoc = documents.firstOrNull()
+                            if (firstDoc != null) {
+                                viewModel.runAiOcrOnDocument(firstDoc)
+                                onNavigateToDocPreview(firstDoc)
+                            } else {
+                                onNavigateToScan()
+                            }
                         }
-                    }
-                )
-
-                // Converter Card
-                QuickToolGridCard(
-                    title = "Converter",
-                    subtitle = "DOCX, PPTX, JPG",
-                    icon = Icons.Default.UploadFile,
-                    iconBg = Color(0x33F59E0B),
-                    iconTint = Color(0xFFF59E0B),
-                    isHighlight = false,
-                    modifier = Modifier.weight(1f),
-                    onClick = onImportFileClicked
-                )
+                    )
+                    CompactQuickActionItem(
+                        title = "AI Assistant",
+                        icon = Icons.Default.AutoAwesome,
+                        color = Color(0xFFF59E0B),
+                        modifier = Modifier.weight(1f),
+                        onClick = onNavigateToAiChat
+                    )
+                    CompactQuickActionItem(
+                        title = "View All",
+                        icon = Icons.Default.Apps,
+                        color = Color(0xFF6B7280),
+                        modifier = Modifier.weight(1f),
+                        onClick = onNavigateToTools
+                    )
+                }
             }
         }
 
@@ -586,6 +642,50 @@ fun DocumentListItem(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun CompactQuickActionItem(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = modifier
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(color.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = title, tint = color, modifier = Modifier.size(18.dp))
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = title,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
