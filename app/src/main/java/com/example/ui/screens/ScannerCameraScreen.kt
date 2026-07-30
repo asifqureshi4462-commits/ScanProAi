@@ -1,9 +1,13 @@
 package com.example.ui.screens
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
@@ -122,6 +126,27 @@ fun ScannerCameraScreen(
     var detectedQuad by remember { mutableStateOf<DocumentQuad?>(null) }
     var autoCropEnabled by remember { mutableStateOf(true) }
 
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission = isGranted
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     var previewViewInstance by remember { mutableStateOf<PreviewView?>(null) }
     var boundCamera by remember { mutableStateOf<Camera?>(null) }
     var cameraProviderInstance by remember { mutableStateOf<ProcessCameraProvider?>(null) }
@@ -198,66 +223,109 @@ fun ScannerCameraScreen(
             .background(Color.Black)
     ) {
         // CameraX Preview
-        AndroidView(
-            factory = { ctx ->
-                val previewView = PreviewView(ctx).apply {
-                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                }
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-                    cameraProviderInstance = cameraProvider
-                    val preview = Preview.Builder().build().also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
+        if (hasCameraPermission) {
+            AndroidView(
+                factory = { ctx ->
+                    val previewView = PreviewView(ctx).apply {
+                        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                     }
-
-                    val capture = ImageCapture.Builder()
-                        .setCaptureMode(
-                            if (hdModeEnabled) ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
-                            else ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
-                        )
-                        .setFlashMode(
-                            if (flashEnabled) ImageCapture.FLASH_MODE_ON
-                            else ImageCapture.FLASH_MODE_OFF
-                        )
-                        .build()
-
-                    val imageAnalysis = ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                        .also { analysis ->
-                            analysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) { imageProxy ->
-                                val quad = OpenCvDocumentDetector.analyzeFrame(imageProxy)
-                                detectedQuad = quad
-                                imageProxy.close()
-                            }
-                        }
-
-                    imageCapture = capture
-
-                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
                     try {
-                        cameraProvider.unbindAll()
-                        val camera = cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            preview,
-                            capture,
-                            imageAnalysis
-                        )
-                        boundCamera = camera
-                        previewViewInstance = previewView
+                        val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+
+                        cameraProviderFuture.addListener({
+                            try {
+                                val cameraProvider = cameraProviderFuture.get()
+                                cameraProviderInstance = cameraProvider
+                                val preview = Preview.Builder().build().also {
+                                    it.setSurfaceProvider(previewView.surfaceProvider)
+                                }
+
+                                val capture = ImageCapture.Builder()
+                                    .setCaptureMode(
+                                        if (hdModeEnabled) ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+                                        else ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+                                    )
+                                    .setFlashMode(
+                                        if (flashEnabled) ImageCapture.FLASH_MODE_ON
+                                        else ImageCapture.FLASH_MODE_OFF
+                                    )
+                                    .build()
+
+                                val imageAnalysis = ImageAnalysis.Builder()
+                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                    .build()
+                                    .also { analysis ->
+                                        analysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) { imageProxy ->
+                                            val quad = OpenCvDocumentDetector.analyzeFrame(imageProxy)
+                                            detectedQuad = quad
+                                            imageProxy.close()
+                                        }
+                                    }
+
+                                imageCapture = capture
+
+                                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                                cameraProvider.unbindAll()
+                                val camera = cameraProvider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    cameraSelector,
+                                    preview,
+                                    capture,
+                                    imageAnalysis
+                                )
+                                boundCamera = camera
+                                previewViewInstance = previewView
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }, ContextCompat.getMainExecutor(ctx))
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
-                }, ContextCompat.getMainExecutor(ctx))
 
-                previewView
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+                    previewView
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DarkBg)
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CenterFocusStrong,
+                    contentDescription = null,
+                    tint = CyanPrimary,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Camera Permission Required",
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Grant camera permission to enable document scanning and live edge detection.",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                ) {
+                    Text("Grant Permission", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
 
         // Focus-on-Tap Touch Target Layer
         Box(
