@@ -58,14 +58,22 @@ import com.example.data.local.ScannedDocument
 import com.example.ui.screens.AiChatScreen
 import com.example.ui.screens.AuthScreen
 import com.example.ui.screens.DocumentPreviewScreen
+import com.example.ui.screens.EpubZipScreen
+import com.example.ui.screens.ExcelEditorScreen
+import com.example.ui.screens.FileManagerScreen
 import com.example.ui.screens.FilesScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.ImageEditorScreen
 import com.example.ui.screens.OnboardingScreen
+import com.example.ui.screens.PdfViewerEditorScreen
+import com.example.ui.screens.PresentationViewerScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.ScannerCameraScreen
 import com.example.ui.screens.SetupWizardScreen
 import com.example.ui.screens.SplashScreen
+import com.example.ui.screens.TextCodeEditorScreen
 import com.example.ui.screens.ToolsScreen
+import com.example.ui.screens.WordEditorScreen
 import com.example.util.PdfEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +89,14 @@ enum class AppDestination {
     MAIN_TABS,
     SCANNER_CAMERA,
     AI_CHAT,
+    PDF_EDITOR,
+    WORD_EDITOR,
+    EXCEL_EDITOR,
+    PRESENTATION_VIEWER,
+    IMAGE_EDITOR,
+    TEXT_CODE_EDITOR,
+    EPUB_READER,
+    ZIP_MANAGER,
     DOC_PREVIEW
 }
 
@@ -124,6 +140,22 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    val openDocumentDedicated: (ScannedDocument) -> Unit = { doc ->
+        viewModel.setActiveDocument(doc)
+        val ext = doc.fileType.uppercase()
+        currentDestination = when {
+            ext.contains("PDF") -> AppDestination.PDF_EDITOR
+            ext.contains("DOC") || ext.contains("TXT") || ext.contains("RTF") -> AppDestination.WORD_EDITOR
+            ext.contains("XLS") || ext.contains("CSV") -> AppDestination.EXCEL_EDITOR
+            ext.contains("PPT") -> AppDestination.PRESENTATION_VIEWER
+            ext.contains("JPG") || ext.contains("PNG") || ext.contains("WEBP") || ext.contains("JPEG") -> AppDestination.IMAGE_EDITOR
+            ext.contains("JSON") || ext.contains("HTML") || ext.contains("XML") -> AppDestination.TEXT_CODE_EDITOR
+            ext.contains("EPUB") -> AppDestination.EPUB_READER
+            ext.contains("ZIP") -> AppDestination.ZIP_MANAGER
+            else -> AppDestination.DOC_PREVIEW
         }
     }
 
@@ -194,6 +226,55 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
             }
         }
 
+        AppDestination.PDF_EDITOR -> {
+            PdfViewerEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.WORD_EDITOR -> {
+            WordEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.EXCEL_EDITOR -> {
+            ExcelEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.PRESENTATION_VIEWER -> {
+            PresentationViewerScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.IMAGE_EDITOR -> {
+            ImageEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.TEXT_CODE_EDITOR -> {
+            TextCodeEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.EPUB_READER, AppDestination.ZIP_MANAGER -> {
+            EpubZipScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
         AppDestination.DOC_PREVIEW -> {
             Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
                 Box(modifier = Modifier.padding(padding)) {
@@ -230,28 +311,19 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                             viewModel = viewModel,
                             onNavigateToScan = { currentDestination = AppDestination.SCANNER_CAMERA },
                             onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
-                            onNavigateToDocPreview = { doc ->
-                                viewModel.setActiveDocument(doc)
-                                currentDestination = AppDestination.DOC_PREVIEW
-                            },
+                            onNavigateToDocPreview = openDocumentDedicated,
                             onNavigateToTools = { selectedTab = 3 },
-                            onImportFileClicked = { fileImportLauncher.launch("application/pdf") }
+                            onImportFileClicked = { fileImportLauncher.launch("application/*") }
                         )
 
-                        1 -> FilesScreen(
+                        1 -> FileManagerScreen(
                             viewModel = viewModel,
-                            onNavigateToDocPreview = { doc ->
-                                viewModel.setActiveDocument(doc)
-                                currentDestination = AppDestination.DOC_PREVIEW
-                            }
+                            onOpenDocument = openDocumentDedicated
                         )
 
                         3 -> ToolsScreen(
                             viewModel = viewModel,
-                            onNavigateToDocPreview = { doc ->
-                                viewModel.setActiveDocument(doc)
-                                currentDestination = AppDestination.DOC_PREVIEW
-                            },
+                            onNavigateToDocPreview = openDocumentDedicated,
                             onNavigateToCamera = { currentDestination = AppDestination.SCANNER_CAMERA }
                         )
 
@@ -265,12 +337,9 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                             viewModel = viewModel,
                             onNavigateToScan = { currentDestination = AppDestination.SCANNER_CAMERA },
                             onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
-                            onNavigateToDocPreview = { doc ->
-                                viewModel.setActiveDocument(doc)
-                                currentDestination = AppDestination.DOC_PREVIEW
-                            },
+                            onNavigateToDocPreview = openDocumentDedicated,
                             onNavigateToTools = { selectedTab = 3 },
-                            onImportFileClicked = { fileImportLauncher.launch("application/pdf") }
+                            onImportFileClicked = { fileImportLauncher.launch("application/*") }
                         )
                     }
                 }

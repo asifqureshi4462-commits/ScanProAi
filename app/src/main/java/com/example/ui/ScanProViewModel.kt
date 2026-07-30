@@ -264,6 +264,72 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun deleteMultipleDocuments(docs: List<ScannedDocument>) {
+        viewModelScope.launch {
+            for (doc in docs) {
+                try {
+                    val file = File(doc.filePath)
+                    if (file.exists()) file.delete()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                dao.deleteDocument(doc)
+            }
+        }
+    }
+
+    fun addNewDocument(doc: ScannedDocument) {
+        viewModelScope.launch {
+            val id = dao.insertDocument(doc)
+            setActiveDocument(doc.copy(id = id))
+        }
+    }
+
+    fun saveDocumentChanges(doc: ScannedDocument) {
+        viewModelScope.launch {
+            dao.updateDocument(doc.copy(updatedAt = System.currentTimeMillis()))
+            setActiveDocument(doc)
+        }
+    }
+
+    fun summarizeDocument(doc: ScannedDocument, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val text = doc.extractedText ?: doc.title
+            val summary = if (isOfflineMode.value) {
+                "Offline Summary: ${doc.title} (${doc.fileType}) - ${doc.fileSizeBytes} bytes."
+            } else {
+                geminiService.summarizeDocument(text)
+            }
+            onResult(summary)
+        }
+    }
+
+    fun extractTextFromDocument(doc: ScannedDocument, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            if (doc.extractedText != null) {
+                onResult(doc.extractedText)
+            } else {
+                val text = if (isOfflineMode.value) {
+                    "Offline OCR text for ${doc.title}"
+                } else {
+                    geminiService.summarizeDocument("Extract text from ${doc.title}")
+                }
+                onResult(text)
+            }
+        }
+    }
+
+    fun askAiQuestion(prompt: String, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val answer = if (isOfflineMode.value) {
+                "Offline AI Response for: $prompt"
+            } else {
+                geminiService.askDocumentQuestion("Context", prompt)
+            }
+            onResult(answer)
+        }
+    }
+
     fun renameDocument(doc: ScannedDocument, newName: String) {
         viewModelScope.launch {
             dao.updateDocument(doc.copy(title = newName, updatedAt = System.currentTimeMillis()))
