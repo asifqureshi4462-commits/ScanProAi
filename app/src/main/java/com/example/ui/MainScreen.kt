@@ -251,7 +251,8 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                             onNavigateToDocPreview = { doc ->
                                 viewModel.setActiveDocument(doc)
                                 currentDestination = AppDestination.DOC_PREVIEW
-                            }
+                            },
+                            onNavigateToCamera = { currentDestination = AppDestination.SCANNER_CAMERA }
                         )
 
                         4 -> ProfileScreen(
