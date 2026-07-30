@@ -52,36 +52,36 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(onSplashFinished: () -> Unit) {
-    val scale = remember { Animatable(0.7f) }
+    val scale = remember { Animatable(0.65f) }
     val alpha = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
         alpha.animateTo(
             targetValue = 1.0f,
             animationSpec = tween(
-                durationMillis = 800,
+                durationMillis = 700,
                 easing = LinearEasing
             )
         )
         scale.animateTo(
             targetValue = 1.0f,
             animationSpec = tween(
-                durationMillis = 1200,
+                durationMillis = 900,
                 easing = FastOutSlowInEasing
             )
         )
-        delay(800) // Total duration ~2000 ms (1800-2200 ms)
+        delay(300) // Total duration ~1000 ms
         onSplashFinished()
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "floating_glow")
     
-    // Floating animation (-8dp to 8dp)
+    // Floating animation (-6dp to 6dp)
     val floatOffset = infiniteTransition.animateFloat(
-        initialValue = -8f,
-        targetValue = 8f,
+        initialValue = -6f,
+        targetValue = 6f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
+            animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "floating"
@@ -89,10 +89,10 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
 
     // Soft glow pulse
     val glowAlpha = infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.75f,
+        initialValue = 0.4f,
+        targetValue = 0.8f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
+            animation = tween(1000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glow"
@@ -100,22 +100,21 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
 
     // AI Sparkles pulse
     val sparkleScale = infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
+        initialValue = 0.85f,
+        targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = FastOutSlowInEasing),
+            animation = tween(800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "sparkle"
     )
 
-    // Dark Navy → Blue Premium Gradient Background
+    // Premium Dark Background (#0F172A)
     val backgroundGradient = Brush.verticalGradient(
         colors = listOf(
-            Color(0xFF090D16),
             Color(0xFF0F172A),
             Color(0xFF1E293B),
-            Color(0xFF1E3A8A)
+            Color(0xFF0F172A)
         )
     )
 
@@ -146,8 +145,8 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    Color(0xFF38BDF8).copy(alpha = glowAlpha.value),
-                                    Color(0xFF2563EB).copy(alpha = glowAlpha.value * 0.5f),
+                                    Color(0xFF06B6D4).copy(alpha = glowAlpha.value),
+                                    Color(0xFF2563EB).copy(alpha = glowAlpha.value * 0.4f),
                                     Color.Transparent
                                 )
                             )
@@ -158,7 +157,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = Color(0xFF38BDF8),
+                    tint = Color(0xFF06B6D4),
                     modifier = Modifier
                         .offset(x = (-60).dp, y = (-50).dp)
                         .size(24.dp)
@@ -200,7 +199,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                         .border(
                             width = 2.dp,
                             brush = Brush.linearGradient(
-                                colors = listOf(Color(0xFF38BDF8), Color(0xFF8B5CF6))
+                                colors = listOf(Color(0xFF06B6D4), Color(0xFF8B5CF6))
                             ),
                             shape = RoundedCornerShape(32.dp)
                         )
@@ -244,13 +243,13 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
 
             Spacer(modifier = Modifier.height(56.dp))
 
-            // Loading Progress Bar
+            // Loading Progress Bar with Cyan Accent (#06B6D4)
             LinearProgressIndicator(
                 modifier = Modifier
                     .fillMaxWidth(0.45f)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp)),
-                color = Color(0xFF38BDF8),
+                color = Color(0xFF06B6D4),
                 trackColor = Color(0xFF1E293B)
             )
         }
