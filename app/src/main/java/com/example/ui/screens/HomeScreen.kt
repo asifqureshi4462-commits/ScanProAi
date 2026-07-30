@@ -122,21 +122,16 @@ fun HomeScreen(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.secondary
-                                    )
-                                )
-                            ),
+                            .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.DocumentScanner,
-                            contentDescription = "Logo",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                        Image(
+                            painter = painterResource(id = R.drawable.scanpro_logo),
+                            contentDescription = "ScanPro AI Logo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
                         )
                     }
 

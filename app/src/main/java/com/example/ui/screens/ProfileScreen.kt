@@ -17,24 +17,31 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SettingsSuggest
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -54,9 +61,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.ScanProViewModel
 import com.example.ui.theme.ThemeMode
 
@@ -72,6 +82,7 @@ fun ProfileScreen(
 
     var showPremiumModal by remember { mutableStateOf(false) }
     var showSettingsModal by remember { mutableStateOf(false) }
+    var showAboutModal by remember { mutableStateOf(false) }
 
     var appLockEnabled by remember { mutableStateOf(false) }
     var cloudBackupEnabled by remember { mutableStateOf(true) }
@@ -172,6 +183,108 @@ fun ProfileScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = primaryCyan, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
                     Text("Done", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // About ScanPro AI Modal
+    if (showAboutModal) {
+        AlertDialog(
+            onDismissRequest = { showAboutModal = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.scanpro_logo),
+                            contentDescription = "ScanPro AI Logo",
+                            modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp))
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text("ScanPro AI", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp)
+                        Text("v3.2.0 • Build 1042", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "ScanPro AI is an all-in-one AI Document Scanner, OCR Engine, PDF Suite, and Cloud Vault powered by Gemini AI.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { }
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.ThumbUp, contentDescription = null, tint = primaryCyan, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("Rate App on Play Store", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { }
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("Share ScanPro AI with Friends", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { }
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.HelpOutline, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("Help Center & Customer Support", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { }
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.PrivacyTip, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("Privacy Policy & Terms of Service", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAboutModal = false }) {
+                    Text("Close", fontWeight = FontWeight.Bold, color = primaryCyan)
                 }
             }
         )
@@ -411,6 +524,14 @@ fun ProfileScreen(
                         viewModel.markSetupWizardCompleted(false)
                         onNavigateToSetupWizard?.invoke()
                     }
+                )
+
+                ProfileOptionRow(
+                    icon = Icons.Default.Info,
+                    title = "About ScanPro AI",
+                    subtitle = "Version, Rate App, Help & Privacy Policy",
+                    color = MaterialTheme.colorScheme.primary,
+                    onClick = { showAboutModal = true }
                 )
 
                 ProfileOptionRow(

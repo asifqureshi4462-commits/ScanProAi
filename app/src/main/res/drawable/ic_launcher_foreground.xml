@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/img_scanpro_logo_1785327950257"
+        android:drawable="@drawable/scanpro_logo"
         android:gravity="center" />
 </layer-list>
