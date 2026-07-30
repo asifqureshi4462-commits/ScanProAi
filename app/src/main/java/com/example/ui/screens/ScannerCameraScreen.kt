@@ -92,12 +92,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.example.ui.ScanProViewModel
 import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.GlassBorder
 import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import com.example.util.DocumentQuad
 import com.example.util.OpenCvDocumentDetector
 import kotlinx.coroutines.delay
@@ -175,11 +170,11 @@ fun ScannerCameraScreen(
     if (showSaveDialog) {
         AlertDialog(
             onDismissRequest = { showSaveDialog = false },
-            containerColor = DarkSurface,
-            title = { Text("Save Document Scan", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Save Document Scan", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("Pages scanned: ${capturedBitmaps.size}", color = CyanPrimary, fontWeight = FontWeight.Bold)
+                    Text("Pages scanned: ${capturedBitmaps.size}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = scanTitle,
@@ -187,10 +182,10 @@ fun ScannerCameraScreen(
                         label = { Text("Document Title") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = CyanPrimary,
-                            unfocusedBorderColor = GlassBorder,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -204,14 +199,14 @@ fun ScannerCameraScreen(
                             onSaveSuccess()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
                     Text("Save to Vault", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSaveDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -292,7 +287,7 @@ fun ScannerCameraScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(DarkBg)
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -300,27 +295,27 @@ fun ScannerCameraScreen(
                 Icon(
                     imageVector = Icons.Default.CenterFocusStrong,
                     contentDescription = null,
-                    tint = CyanPrimary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(64.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Camera Permission Required",
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Grant camera permission to enable document scanning and live edge detection.",
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(
                     onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
                     Text("Grant Permission", fontWeight = FontWeight.Bold)
                 }
@@ -432,7 +427,7 @@ fun ScannerCameraScreen(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
                     .background(Color(0xCC121824))
-                    .border(1.dp, GlassBorder, RoundedCornerShape(20.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -659,7 +654,7 @@ fun ScannerCameraScreen(
                         .background(Color.Black.copy(alpha = 0.6f))
                         .border(
                             width = 2.dp,
-                            color = if (lastCaptured != null) CyanPrimary else GlassBorder,
+                            color = if (lastCaptured != null) CyanPrimary else Color.White.copy(alpha = 0.3f),
                             shape = RoundedCornerShape(14.dp)
                         )
                         .clickable {

@@ -41,11 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
 @Composable
@@ -78,11 +73,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(DarkBg, Color(0xFF0F172A), Color(0xFF0B0E14))
-                )
-            ),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -96,11 +87,11 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                     .size(140.dp)
                     .scale(scale.value)
                     .clip(CircleShape)
-                    .background(Color(0x1B00F2FE))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
                     .border(
                         width = 2.dp,
                         brush = Brush.linearGradient(
-                            colors = listOf(CyanPrimary.copy(alpha = pulseAlpha.value), NeonTeal)
+                            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
                         ),
                         shape = CircleShape
                     )
@@ -108,7 +99,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                 Icon(
                     imageVector = Icons.Default.DocumentScanner,
                     contentDescription = "ScanPro AI Logo",
-                    tint = CyanPrimary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(68.dp)
                 )
             }
@@ -122,7 +113,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                     fontSize = 34.sp,
                     letterSpacing = 1.2.sp
                 ),
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -133,7 +124,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                     fontWeight = FontWeight.Medium,
                     fontSize = 15.sp
                 ),
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(64.dp))
@@ -143,8 +134,8 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                     .fillMaxWidth(0.5f)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp)),
-                color = CyanPrimary,
-                trackColor = Color(0x3300F2FE)
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
     }

@@ -66,13 +66,6 @@ import com.example.ui.screens.ScannerCameraScreen
 import com.example.ui.screens.SetupWizardScreen
 import com.example.ui.screens.SplashScreen
 import com.example.ui.screens.ToolsScreen
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import com.example.util.PdfEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -360,7 +353,10 @@ fun BottomNavWithCenterFab(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(CyanPrimary, NeonTeal)
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
                                 )
                             ),
                         contentAlignment = Alignment.Center
@@ -368,7 +364,7 @@ fun BottomNavWithCenterFab(
                         Icon(
                             Icons.Default.DocumentScanner,
                             contentDescription = "Scan",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(26.dp)
                         )
                     }

@@ -42,12 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
 data class OnboardingPage(
@@ -82,7 +76,7 @@ fun OnboardingScreen(onFinishOnboarding: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(24.dp),
@@ -94,7 +88,7 @@ fun OnboardingScreen(onFinishOnboarding: () -> Unit) {
             horizontalArrangement = Arrangement.End
         ) {
             TextButton(onClick = onFinishOnboarding) {
-                Text("Skip", color = TextSecondary, fontSize = 16.sp)
+                Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
             }
         }
 
@@ -118,15 +112,15 @@ fun OnboardingScreen(onFinishOnboarding: () -> Unit) {
                         .clip(CircleShape)
                         .background(
                             Brush.radialGradient(
-                                colors = listOf(Color(0x3300F2FE), DarkSurface)
+                                colors = listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surface)
                             )
                         )
-                        .border(1.5.dp, Brush.linearGradient(listOf(CyanPrimary, NeonTeal)), CircleShape)
+                        .border(1.5.dp, Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)), CircleShape)
                 ) {
                     Icon(
                         imageVector = page.icon,
                         contentDescription = null,
-                        tint = CyanPrimary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(72.dp)
                     )
                 }
@@ -139,7 +133,7 @@ fun OnboardingScreen(onFinishOnboarding: () -> Unit) {
                         fontWeight = FontWeight.Bold,
                         fontSize = 26.sp
                     ),
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center
                 )
 
@@ -151,7 +145,7 @@ fun OnboardingScreen(onFinishOnboarding: () -> Unit) {
                         lineHeight = 24.sp,
                         fontSize = 15.sp
                     ),
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
@@ -175,7 +169,7 @@ fun OnboardingScreen(onFinishOnboarding: () -> Unit) {
                             .width(if (isSelected) 28.dp else 8.dp)
                             .clip(CircleShape)
                             .background(
-                                if (isSelected) CyanPrimary else Color(0x33FFFFFF)
+                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                             )
                     )
                 }
@@ -193,8 +187,8 @@ fun OnboardingScreen(onFinishOnboarding: () -> Unit) {
                 },
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = CyanPrimary,
-                    contentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 modifier = Modifier.height(50.dp)
             ) {

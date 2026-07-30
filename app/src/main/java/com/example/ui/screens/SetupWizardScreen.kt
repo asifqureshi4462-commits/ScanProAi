@@ -89,11 +89,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonPurple
-import com.example.ui.theme.NeonTeal
 
 data class PermissionStep(
     val id: String,
@@ -347,7 +342,7 @@ fun SetupWizardScreen(
                         .fillMaxWidth()
                         .height(8.dp)
                         .clip(RoundedCornerShape(4.dp)),
-                    color = CyanPrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
@@ -393,9 +388,9 @@ fun SetupWizardScreen(
                                     width = 1.5.dp,
                                     brush = Brush.linearGradient(
                                         colors = listOf(
-                                            CyanPrimary.copy(alpha = 0.5f),
-                                            NeonPurple.copy(alpha = 0.3f),
-                                            GlassBorder
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
+                                            MaterialTheme.colorScheme.outline
                                         )
                                     ),
                                     shape = RoundedCornerShape(24.dp)
@@ -415,19 +410,19 @@ fun SetupWizardScreen(
                                         .background(
                                             Brush.radialGradient(
                                                 colors = listOf(
-                                                    CyanPrimary.copy(alpha = 0.25f),
-                                                    NeonPurple.copy(alpha = 0.15f),
+                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
                                                     Color.Transparent
                                                 )
                                             )
                                         )
-                                        .border(2.dp, CyanPrimary, CircleShape),
+                                        .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = targetStep.icon,
                                         contentDescription = targetStep.title,
-                                        tint = CyanPrimary,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(40.dp)
                                     )
                                 }
@@ -439,7 +434,7 @@ fun SetupWizardScreen(
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.2.sp,
-                                    color = NeonTeal
+                                    color = MaterialTheme.colorScheme.secondary
                                 )
 
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -476,7 +471,7 @@ fun SetupWizardScreen(
                                         Icon(
                                             Icons.Default.PrivacyTip,
                                             contentDescription = "Privacy",
-                                            tint = CyanPrimary,
+                                            tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier
                                                 .size(18.dp)
                                                 .padding(top = 2.dp)
@@ -487,7 +482,7 @@ fun SetupWizardScreen(
                                                 text = "PRIVACY ASSURANCE",
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = CyanPrimary
+                                                color = MaterialTheme.colorScheme.primary
                                             )
                                             Text(
                                                 text = targetStep.privacyNote,
@@ -542,8 +537,8 @@ fun SetupWizardScreen(
                             .height(54.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = CyanPrimary,
-                            contentColor = Color.Black
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -564,8 +559,8 @@ fun SetupWizardScreen(
                             .height(54.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = CyanPrimary,
-                            contentColor = Color.Black
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -605,8 +600,8 @@ fun SetupWizardScreen(
                             .height(52.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = CyanPrimary,
-                            contentColor = Color.Black
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         val isGranted = grantedMap[currentStep.id] == true
@@ -667,7 +662,7 @@ fun SetupWizardScreen(
                     Icon(
                         Icons.Default.Info,
                         contentDescription = null,
-                        tint = CyanPrimary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -686,7 +681,7 @@ fun SetupWizardScreen(
                         showDeniedDialog = false
                         openAppSettings()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
                     Text("Open Settings", fontWeight = FontWeight.Bold)
                 }

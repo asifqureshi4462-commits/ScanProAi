@@ -53,14 +53,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.auth.AuthRepository
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 
 @Composable
 fun AuthScreen(
@@ -82,11 +74,7 @@ fun AuthScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(DarkBg, Color(0xFF0F172A), DarkBg)
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(24.dp),
@@ -102,12 +90,12 @@ fun AuthScreen(
                     fontWeight = FontWeight.Bold,
                     fontSize = 32.sp
                 ),
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
             Text(
                 text = "Sign in to sync your document vault",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -115,15 +103,15 @@ fun AuthScreen(
             // Tabs
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = DarkSurface,
-                contentColor = CyanPrimary,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
                 indicator = { tabPositions ->
                     TabRowDefaults.SecondaryIndicator(
                         Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        color = CyanPrimary
+                        color = MaterialTheme.colorScheme.primary
                     )
                 },
-                modifier = Modifier.border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
+                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
             ) {
                 Tab(
                     selected = selectedTab == 0,
@@ -145,11 +133,11 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Card(
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
 
@@ -168,7 +156,7 @@ fun AuthScreen(
                                 value = email,
                                 onValueChange = { email = it },
                                 label = { Text("Email Address") },
-                                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = CyanPrimary) },
+                                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                                 singleLine = true,
                                 colors = inputColors(),
                                 modifier = Modifier.fillMaxWidth()
@@ -178,7 +166,7 @@ fun AuthScreen(
                                 value = password,
                                 onValueChange = { password = it },
                                 label = { Text("Password") },
-                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = CyanPrimary) },
+                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                                 visualTransformation = PasswordVisualTransformation(),
                                 singleLine = true,
                                 colors = inputColors(),
@@ -195,14 +183,14 @@ fun AuthScreen(
                                     )
                                 },
                                 enabled = !isLoading,
-                                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(50.dp)
                             ) {
                                 if (isLoading) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.Black)
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                                 } else {
                                     Text("Sign In", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 }
@@ -214,7 +202,7 @@ fun AuthScreen(
                                 value = fullName,
                                 onValueChange = { fullName = it },
                                 label = { Text("Full Name") },
-                                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = CyanPrimary) },
+                                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                                 singleLine = true,
                                 colors = inputColors(),
                                 modifier = Modifier.fillMaxWidth()
@@ -224,7 +212,7 @@ fun AuthScreen(
                                 value = email,
                                 onValueChange = { email = it },
                                 label = { Text("Email Address") },
-                                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = CyanPrimary) },
+                                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                                 singleLine = true,
                                 colors = inputColors(),
                                 modifier = Modifier.fillMaxWidth()
@@ -234,7 +222,7 @@ fun AuthScreen(
                                 value = password,
                                 onValueChange = { password = it },
                                 label = { Text("Password") },
-                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = CyanPrimary) },
+                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                                 visualTransformation = PasswordVisualTransformation(),
                                 singleLine = true,
                                 colors = inputColors(),
@@ -251,14 +239,14 @@ fun AuthScreen(
                                     )
                                 },
                                 enabled = !isLoading,
-                                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(50.dp)
                             ) {
                                 if (isLoading) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.Black)
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                                 } else {
                                     Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 }
@@ -271,7 +259,7 @@ fun AuthScreen(
                                     value = phone,
                                     onValueChange = { phone = it },
                                     label = { Text("Phone Number") },
-                                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = CyanPrimary) },
+                                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                                     singleLine = true,
                                     colors = inputColors(),
@@ -280,7 +268,7 @@ fun AuthScreen(
                                 Spacer(modifier = Modifier.height(20.dp))
                                 Button(
                                     onClick = { isOtpSent = true },
-                                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -289,7 +277,7 @@ fun AuthScreen(
                                     Text("Send OTP Code", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 }
                             } else {
-                                Text("Enter 4-digit verification code sent to $phone", fontSize = 13.sp, color = TextSecondary)
+                                Text("Enter 4-digit verification code sent to $phone", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.height(12.dp))
                                 OutlinedTextField(
                                     value = otpCode,
@@ -311,14 +299,14 @@ fun AuthScreen(
                                         )
                                     },
                                     enabled = !isLoading,
-                                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(50.dp)
                                 ) {
                                     if (isLoading) {
-                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.Black)
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                                     } else {
                                         Text("Verify & Continue", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                     }
@@ -338,7 +326,7 @@ fun AuthScreen(
                     onAuthSuccess()
                 }
             ) {
-                Text("Continue as Guest (Offline Vault)", color = NeonTeal, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text("Continue as Guest (Offline Vault)", color = MaterialTheme.colorScheme.secondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -346,10 +334,10 @@ fun AuthScreen(
 
 @Composable
 private fun inputColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = CyanPrimary,
-    unfocusedBorderColor = GlassBorder,
-    focusedLabelColor = CyanPrimary,
-    unfocusedLabelColor = TextSecondary,
-    focusedTextColor = TextPrimary,
-    unfocusedTextColor = TextPrimary
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+    focusedLabelColor = MaterialTheme.colorScheme.primary,
+    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
 )

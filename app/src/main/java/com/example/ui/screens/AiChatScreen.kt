@@ -59,15 +59,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.ChatMessage
 import com.example.ui.ScanProViewModel
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonAmber
-import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 
 @Composable
 fun AiChatScreen(viewModel: ScanProViewModel) {
@@ -89,21 +80,21 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         // Offline / Online Status Indicator Banner
         Card(
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (isOffline) Color(0x33F59E0B) else Color(0x1B10B981)
+                containerColor = if (isOffline) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer
             ),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 10.dp)
                 .border(
                     1.dp,
-                    if (isOffline) Color(0x66F59E0B) else Color(0x4410B981),
+                    if (isOffline) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
                     RoundedCornerShape(14.dp)
                 )
         ) {
@@ -118,7 +109,7 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
                     Icon(
                         imageVector = if (isOffline) Icons.Default.CloudOff else Icons.Default.Wifi,
                         contentDescription = null,
-                        tint = if (isOffline) NeonAmber else Color(0xFF34D399),
+                        tint = if (isOffline) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -128,27 +119,27 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
                                 text = if (isOffline) "OFFLINE MODE" else "ONLINE MODE",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isOffline) NeonAmber else Color(0xFF34D399)
+                                color = if (isOffline) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0x33FFFFFF))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .padding(horizontal = 4.dp, vertical = 1.dp)
                             ) {
                                 Text(
                                     text = "ROOM DB CACHED",
                                     fontSize = 8.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                         Text(
                             text = if (isOffline) "${chatMessages.size} queries available from SQLite vault" else "All conversation history cached locally in Room DB",
                             fontSize = 10.sp,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -157,7 +148,7 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0x22FFFFFF))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .clickable { viewModel.toggleOfflineMode() }
                             .padding(horizontal = 8.dp, vertical = 5.dp)
                     ) {
@@ -165,7 +156,7 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
                             text = if (isOffline) "Go Online" else "Offline Mode",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -178,7 +169,7 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
                         Icon(
                             Icons.Default.DeleteOutline,
                             contentDescription = "Clear History",
-                            tint = TextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -189,21 +180,21 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
         activeDocument?.let { doc ->
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0x2200F2FE)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp)
-                    .border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = CyanPrimary)
+                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Active Document Context:", fontSize = 11.sp, color = TextSecondary)
-                        Text(doc.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text("Active Document Context:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(doc.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -227,9 +218,9 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(8.dp)
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = CyanPrimary)
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Gemini AI is analyzing document...", fontSize = 12.sp, color = TextSecondary)
+                        Text("Gemini AI is analyzing document...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -246,12 +237,12 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .background(DarkSurface)
-                        .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
                         .clickable { viewModel.sendChatMessage(q) }
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text(q, fontSize = 12.sp, color = CyanPrimary)
+                    Text(q, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -264,16 +255,16 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
             OutlinedTextField(
                 value = userInputValue,
                 onValueChange = { userInputValue = it },
-                placeholder = { Text("Ask Gemini AI anything...", color = TextSecondary) },
+                placeholder = { Text("Ask Gemini AI anything...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 singleLine = true,
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = CyanPrimary,
-                    unfocusedBorderColor = GlassBorder,
-                    focusedContainerColor = DarkSurface,
-                    unfocusedContainerColor = DarkSurface,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier.weight(1f)
             )
@@ -290,9 +281,9 @@ fun AiChatScreen(viewModel: ScanProViewModel) {
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(CyanPrimary)
+                    .background(MaterialTheme.colorScheme.primary)
             ) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.Black)
+                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
@@ -314,13 +305,13 @@ fun ChatMessageBubble(msg: ChatMessage, onCopy: () -> Unit) {
                 bottomEnd = if (isUser) 4.dp else 16.dp
             ),
             colors = CardDefaults.cardColors(
-                containerColor = if (isUser) CyanPrimary else DarkSurface
+                containerColor = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
             ),
             modifier = Modifier
                 .fillMaxWidth(0.85f)
                 .border(
                     width = 1.dp,
-                    color = if (isUser) CyanPrimary else GlassBorder,
+                    color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                     shape = RoundedCornerShape(16.dp)
                 )
         ) {
@@ -334,12 +325,12 @@ fun ChatMessageBubble(msg: ChatMessage, onCopy: () -> Unit) {
                         text = if (isUser) "You" else "ScanPro AI",
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
-                        color = if (isUser) Color.Black else CyanPrimary
+                        color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
                     )
 
                     if (!isUser) {
                         IconButton(onClick = onCopy, modifier = Modifier.size(20.dp)) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = TextSecondary, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
                         }
                     }
                 }
@@ -349,7 +340,7 @@ fun ChatMessageBubble(msg: ChatMessage, onCopy: () -> Unit) {
                 Text(
                     text = msg.message,
                     fontSize = 14.sp,
-                    color = if (isUser) Color.Black else TextPrimary,
+                    color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                     lineHeight = 20.sp
                 )
             }

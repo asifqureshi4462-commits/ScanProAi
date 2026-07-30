@@ -69,13 +69,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.ScannedDocument
 import com.example.ui.ScanProViewModel
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import java.io.File
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -99,18 +92,18 @@ fun FilesScreen(
     if (documentToRename != null) {
         AlertDialog(
             onDismissRequest = { documentToRename = null },
-            containerColor = DarkSurface,
-            title = { Text("Rename Document", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Rename Document", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = renameInputText,
                     onValueChange = { renameInputText = it },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = CyanPrimary,
-                        unfocusedBorderColor = GlassBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -125,12 +118,12 @@ fun FilesScreen(
                         documentToRename = null
                     }
                 ) {
-                    Text("Rename", color = CyanPrimary, fontWeight = FontWeight.Bold)
+                    Text("Rename", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { documentToRename = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -139,7 +132,7 @@ fun FilesScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         // Header Bar
@@ -151,7 +144,7 @@ fun FilesScreen(
             Text(
                 text = "File Vault Manager",
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Row {
@@ -170,7 +163,7 @@ fun FilesScreen(
                     Icon(
                         imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
                         contentDescription = "Toggle Layout",
-                        tint = CyanPrimary
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -182,17 +175,17 @@ fun FilesScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { viewModel.searchQuery.value = it },
-            placeholder = { Text("Search files by name or text...", color = TextSecondary) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = CyanPrimary) },
+            placeholder = { Text("Search files by name or text...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = CyanPrimary,
-                unfocusedBorderColor = GlassBorder,
-                focusedContainerColor = DarkSurface,
-                unfocusedContainerColor = DarkSurface,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -211,16 +204,16 @@ fun FilesScreen(
                     onClick = { viewModel.selectedCategory.value = category },
                     label = { Text(category, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = CyanPrimary,
-                        selectedLabelColor = Color.Black,
-                        containerColor = DarkSurface,
-                        labelColor = TextPrimary
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        labelColor = MaterialTheme.colorScheme.onSurface
                     ),
                     border = FilterChipDefaults.filterChipBorder(
                         enabled = true,
                         selected = isSelected,
-                        borderColor = GlassBorder,
-                        selectedBorderColor = CyanPrimary
+                        borderColor = MaterialTheme.colorScheme.outline,
+                        selectedBorderColor = MaterialTheme.colorScheme.primary
                     )
                 )
             }
@@ -237,9 +230,9 @@ fun FilesScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Folder, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(56.dp))
+                    Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(56.dp))
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("No files found in $selectedCategory", color = TextSecondary, fontSize = 15.sp)
+                    Text("No files found in $selectedCategory", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp)
                 }
             }
         } else if (isGridView) {
@@ -254,12 +247,12 @@ fun FilesScreen(
                     Card(
                         shape = RoundedCornerShape(14.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isSelected) Color(0x3300F2FE) else DarkSurface
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                         ),
                         modifier = Modifier
                             .border(
                                 1.dp,
-                                if (isSelected) CyanPrimary else GlassBorder,
+                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                                 RoundedCornerShape(14.dp)
                             )
                             .combinedClickable(
@@ -284,16 +277,16 @@ fun FilesScreen(
                                 modifier = Modifier
                                     .size(60.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0x2200F2FE)),
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(36.dp))
+                                Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
                             }
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
                                 text = doc.title,
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 13.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -301,7 +294,7 @@ fun FilesScreen(
                             Text(
                                 text = "${doc.pageCount} pg • ${(doc.fileSizeBytes / 1024)} KB",
                                 fontSize = 11.sp,
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -317,13 +310,13 @@ fun FilesScreen(
                     Card(
                         shape = RoundedCornerShape(14.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isSelected) Color(0x3300F2FE) else DarkSurface
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .border(
                                 1.dp,
-                                if (isSelected) CyanPrimary else GlassBorder,
+                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                                 RoundedCornerShape(14.dp)
                             )
                             .combinedClickable(
@@ -348,10 +341,10 @@ fun FilesScreen(
                                 modifier = Modifier
                                     .size(44.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0x2200F2FE)),
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(24.dp))
+                                Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                             }
 
                             Spacer(modifier = Modifier.width(12.dp))
@@ -360,7 +353,7 @@ fun FilesScreen(
                                 Text(
                                     text = doc.title,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 14.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -368,7 +361,7 @@ fun FilesScreen(
                                 Text(
                                     text = "${doc.category} • ${(doc.fileSizeBytes / 1024)} KB",
                                     fontSize = 11.sp,
-                                    color = TextSecondary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
 
@@ -378,14 +371,14 @@ fun FilesScreen(
                                     renameInputText = doc.title
                                 }
                             ) {
-                                Icon(Icons.Default.Edit, contentDescription = "Rename", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.Edit, contentDescription = "Rename", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                             }
 
                             IconButton(onClick = { viewModel.toggleFavorite(doc) }) {
                                 Icon(
                                     imageVector = Icons.Default.Star,
                                     contentDescription = "Favorite",
-                                    tint = if (doc.isFavorite) Color(0xFFF59E0B) else TextSecondary,
+                                    tint = if (doc.isFavorite) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }

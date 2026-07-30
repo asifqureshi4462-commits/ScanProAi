@@ -72,19 +72,6 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.data.local.ScannedDocument
 import com.example.ui.ScanProViewModel
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.GlassCardBg
-import com.example.ui.theme.NeonAmber
-import com.example.ui.theme.NeonPurple
-import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TealLight
-import com.example.ui.theme.TextMuted
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -114,7 +101,7 @@ fun HomeScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
@@ -134,7 +121,10 @@ fun HomeScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(CyanPrimary, NeonTeal)
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
                                 )
                             ),
                         contentAlignment = Alignment.Center
@@ -157,7 +147,7 @@ fun HomeScreen(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 20.sp
                                 ),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
                                 text = "AI",
@@ -165,14 +155,14 @@ fun HomeScreen(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 20.sp
                                 ),
-                                color = CyanPrimary
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         Text(
                             text = "PREMIUM SUITE",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             letterSpacing = 1.2.sp
                         )
                     }
@@ -183,15 +173,15 @@ fun HomeScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(GlassCardBg)
-                            .border(1.dp, GlassBorder, CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                             .clickable { },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Notifications,
                             contentDescription = "Notifications",
-                            tint = TextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -202,15 +192,15 @@ fun HomeScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .border(2.dp, Color(0x3322D3EE), CircleShape)
-                            .background(DarkSurfaceVariant),
+                            .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = currentUser?.displayName?.take(2)?.uppercase() ?: "JD",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = CyanPrimary
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -221,10 +211,10 @@ fun HomeScreen(
         item {
             Card(
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, GlassBorder, RoundedCornerShape(24.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(24.dp))
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -234,17 +224,17 @@ fun HomeScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { viewModel.searchQuery.value = it },
-                        placeholder = { Text("Search documents...", color = TextMuted, fontSize = 14.sp) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp)) },
+                        placeholder = { Text("Search documents...", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = CyanPrimary,
-                            unfocusedBorderColor = GlassBorder,
-                            focusedContainerColor = DarkBg,
-                            unfocusedContainerColor = DarkBg,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -259,13 +249,13 @@ fun HomeScreen(
                             Text(
                                 text = "Cloud Storage",
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = String.format(Locale.US, "%.1f GB / %d GB", usedGb, totalGb),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = CyanPrimary
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -274,7 +264,7 @@ fun HomeScreen(
                                 .fillMaxWidth()
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(3.dp))
-                                .background(Color(0x1AFFFFFF))
+                                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                         ) {
                             Box(
                                 modifier = Modifier
@@ -283,7 +273,10 @@ fun HomeScreen(
                                     .clip(RoundedCornerShape(3.dp))
                                     .background(
                                         Brush.horizontalGradient(
-                                            colors = listOf(CyanPrimary, TealLight)
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary,
+                                                MaterialTheme.colorScheme.secondary
+                                            )
                                         )
                                     )
                             )
@@ -304,8 +297,8 @@ fun HomeScreen(
                     title = "PDF Tools",
                     subtitle = "Convert & Edit",
                     icon = Icons.Default.PictureAsPdf,
-                    iconBg = Color(0x3322D3EE),
-                    iconTint = CyanPrimary,
+                    iconBg = MaterialTheme.colorScheme.primaryContainer,
+                    iconTint = MaterialTheme.colorScheme.primary,
                     isHighlight = true,
                     modifier = Modifier.weight(1f),
                     onClick = onNavigateToTools
@@ -316,8 +309,8 @@ fun HomeScreen(
                     title = "AI Chat",
                     subtitle = "Analyze Docs",
                     icon = Icons.Default.AutoAwesome,
-                    iconBg = Color(0x330D9488),
-                    iconTint = TealLight,
+                    iconBg = MaterialTheme.colorScheme.secondaryContainer,
+                    iconTint = MaterialTheme.colorScheme.secondary,
                     isHighlight = false,
                     modifier = Modifier.weight(1f),
                     onClick = onNavigateToAiChat
@@ -336,7 +329,7 @@ fun HomeScreen(
                     subtitle = "Extract Data",
                     icon = Icons.Default.Translate,
                     iconBg = Color(0x33A855F7),
-                    iconTint = NeonPurple,
+                    iconTint = Color(0xFFA855F7),
                     isHighlight = false,
                     modifier = Modifier.weight(1f),
                     onClick = {
@@ -356,7 +349,7 @@ fun HomeScreen(
                     subtitle = "DOCX, PPTX, JPG",
                     icon = Icons.Default.UploadFile,
                     iconBg = Color(0x33F59E0B),
-                    iconTint = NeonAmber,
+                    iconTint = Color(0xFFF59E0B),
                     isHighlight = false,
                     modifier = Modifier.weight(1f),
                     onClick = onImportFileClicked
@@ -377,11 +370,11 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.2.sp
                     ),
-                    color = TextMuted
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "View All",
-                    color = CyanPrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.clickable { onNavigateToTools() }
@@ -394,10 +387,10 @@ fun HomeScreen(
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
                 ) {
                     Box(
                         modifier = Modifier
@@ -406,9 +399,9 @@ fun HomeScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Folder, contentDescription = null, tint = TextMuted, modifier = Modifier.size(40.dp))
+                            Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(40.dp))
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("No documents scanned yet", color = TextSecondary, fontSize = 13.sp)
+                            Text("No documents scanned yet", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                         }
                     }
                 }
@@ -455,12 +448,12 @@ fun QuickToolGridCard(
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlight) Color(0x1B0891B2) else DarkSurface
+            containerColor = if (isHighlight) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
         ),
         modifier = modifier
             .border(
                 1.dp,
-                if (isHighlight) Color(0x3322D3EE) else GlassBorder,
+                if (isHighlight) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline,
                 RoundedCornerShape(20.dp)
             )
             .clickable { onClick() }
@@ -484,12 +477,12 @@ fun QuickToolGridCard(
                     text = title,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = subtitle,
                     fontSize = 11.sp,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -508,10 +501,10 @@ fun DocumentListItem(
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
             .clickable { onClick() }
     ) {
         Row(
@@ -530,7 +523,7 @@ fun DocumentListItem(
                     text = if (isPdf) "PDF" else "IMG",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isPdf) Color(0xFFF87171) else Color(0xFF60A5FA)
+                    color = if (isPdf) Color(0xFFEF4444) else Color(0xFF3B82F6)
                 )
             }
 
@@ -540,7 +533,7 @@ fun DocumentListItem(
                 Text(
                     text = document.title,
                     fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -555,7 +548,7 @@ fun DocumentListItem(
                     Text(
                         text = "$formattedSize • ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(document.createdAt))}",
                         fontSize = 11.sp,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -564,27 +557,27 @@ fun DocumentListItem(
                 Icon(
                     imageVector = if (document.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
                     contentDescription = "Favorite",
-                    tint = if (document.isFavorite) NeonAmber else TextSecondary,
+                    tint = if (document.isFavorite) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
 
             Box {
                 IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                 }
 
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false },
-                    modifier = Modifier.background(DarkSurfaceVariant)
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Open & Preview", color = TextPrimary, fontSize = 13.sp) },
+                        text = { Text("Open & Preview", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp) },
                         onClick = { showMenu = false; onClick() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Share Document", color = TextPrimary, fontSize = 13.sp) },
+                        text = { Text("Share Document", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp) },
                         onClick = { showMenu = false; onShare() }
                     )
                     DropdownMenuItem(

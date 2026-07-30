@@ -65,13 +65,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.ScannedDocument
 import com.example.ui.ScanProViewModel
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import com.example.util.PdfEngine
 import java.io.File
 
@@ -110,8 +103,8 @@ fun DocumentPreviewScreen(
     }
 
     if (doc == null) {
-        Box(modifier = Modifier.fillMaxSize().background(DarkBg), contentAlignment = Alignment.Center) {
-            Text("No document selected", color = TextSecondary)
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
+            Text("No document selected", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
     }
@@ -119,7 +112,7 @@ fun DocumentPreviewScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         // Top Toolbar Bar
@@ -129,13 +122,13 @@ fun DocumentPreviewScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBackClicked) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
             }
 
             Text(
                 text = doc.title,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 16.sp,
                 modifier = Modifier.weight(1f)
             )
@@ -144,7 +137,7 @@ fun DocumentPreviewScreen(
                 Icon(
                     imageVector = if (doc.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
                     contentDescription = "Favorite",
-                    tint = if (doc.isFavorite) Color(0xFFF59E0B) else TextSecondary
+                    tint = if (doc.isFavorite) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -160,7 +153,7 @@ fun DocumentPreviewScreen(
                     }
                 }
             ) {
-                Icon(Icons.Default.Share, contentDescription = "Share", tint = CyanPrimary)
+                Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.primary)
             }
         }
 
@@ -169,15 +162,15 @@ fun DocumentPreviewScreen(
         // Tabs
         TabRow(
             selectedTabIndex = selectedTab,
-            containerColor = DarkSurface,
-            contentColor = CyanPrimary,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                    color = CyanPrimary
+                    color = MaterialTheme.colorScheme.primary
                 )
             },
-            modifier = Modifier.border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
+            modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
         ) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("PDF View") })
             Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("OCR Text") })
@@ -211,10 +204,10 @@ fun DocumentPreviewScreen(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(20.dp))
-                                        .background(if (isSelected) CyanPrimary else DarkSurface)
+                                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
                                         .border(
                                             width = 1.dp,
-                                            color = if (isSelected) CyanPrimary else GlassBorder,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                                             shape = RoundedCornerShape(20.dp)
                                         )
                                         .clickable { selectedFilter = filter }
@@ -222,7 +215,7 @@ fun DocumentPreviewScreen(
                                 ) {
                                     Text(
                                         text = filter,
-                                        color = if (isSelected) Color.Black else TextPrimary,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                         fontSize = 12.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
@@ -232,7 +225,7 @@ fun DocumentPreviewScreen(
                             if (selectedFilter != "Original") {
                                 Button(
                                     onClick = { viewModel.applyFilterToDocument(doc, selectedFilter) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = NeonTeal, contentColor = Color.Black),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary),
                                     shape = RoundedCornerShape(20.dp),
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                                 ) {
@@ -245,7 +238,7 @@ fun DocumentPreviewScreen(
 
                         if (isLoadingPage) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = CyanPrimary)
+                                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                             }
                         } else if (pageBitmap != null) {
                             val composeColorFilter = remember(selectedFilter) {
@@ -289,7 +282,7 @@ fun DocumentPreviewScreen(
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+                                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
                             ) {
                                 Image(
                                     bitmap = pageBitmap!!.asImageBitmap(),
@@ -301,7 +294,7 @@ fun DocumentPreviewScreen(
                             }
                         } else {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Unable to render PDF page", color = TextSecondary)
+                                Text("Unable to render PDF page", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -316,20 +309,20 @@ fun DocumentPreviewScreen(
                         if (doc.extractedText.isNullOrBlank()) {
                             Card(
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 modifier = Modifier.fillMaxWidth().padding(16.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(20.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(40.dp))
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Text("No OCR text extracted yet", color = TextPrimary, fontWeight = FontWeight.Bold)
+                                    Text("No OCR text extracted yet", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Button(
                                         onClick = { viewModel.runAiOcrOnDocument(doc) },
-                                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                                     ) {
                                         Text("Extract Text with Gemini AI", fontWeight = FontWeight.Bold)
                                     }
@@ -346,12 +339,12 @@ fun DocumentPreviewScreen(
                                         clipboard.setPrimaryClip(ClipData.newPlainText("Extracted Text", doc.extractedText))
                                     }
                                 ) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = CyanPrimary)
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                             Text(
                                 text = doc.extractedText!!,
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 14.sp,
                                 lineHeight = 22.sp
                             )
@@ -368,7 +361,7 @@ fun DocumentPreviewScreen(
                         if (doc.summary.isNullOrBlank()) {
                             Button(
                                 onClick = { viewModel.runAiSummarizeDocument(doc) },
-                                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text("Generate Executive AI Summary", fontWeight = FontWeight.Bold)
@@ -376,13 +369,13 @@ fun DocumentPreviewScreen(
                         } else {
                             Card(
                                 shape = RoundedCornerShape(14.dp),
-                                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                                modifier = Modifier.fillMaxWidth().border(1.dp, GlassBorder, RoundedCornerShape(14.dp))
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("AI Executive Summary", fontWeight = FontWeight.Bold, color = CyanPrimary, fontSize = 16.sp)
+                                    Text("AI Executive Summary", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Text(doc.summary!!, color = TextPrimary, fontSize = 14.sp, lineHeight = 22.sp)
+                                    Text(doc.summary!!, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, lineHeight = 22.sp)
                                 }
                             }
                         }
@@ -402,19 +395,19 @@ fun DocumentPreviewScreen(
                             ) {
                                 Button(
                                     onClick = { viewModel.runAiTranslateDocument(doc, "Spanish") },
-                                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                                 ) {
                                     Text("Spanish", fontWeight = FontWeight.Bold)
                                 }
                                 Button(
                                     onClick = { viewModel.runAiTranslateDocument(doc, "French") },
-                                    colors = ButtonDefaults.buttonColors(containerColor = NeonTeal, contentColor = Color.Black)
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)
                                 ) {
                                     Text("French", fontWeight = FontWeight.Bold)
                                 }
                                 Button(
                                     onClick = { viewModel.runAiTranslateDocument(doc, "German") },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC084FC), contentColor = Color.Black)
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary, contentColor = MaterialTheme.colorScheme.onTertiary)
                                 ) {
                                     Text("German", fontWeight = FontWeight.Bold)
                                 }
@@ -422,13 +415,13 @@ fun DocumentPreviewScreen(
                         } else {
                             Card(
                                 shape = RoundedCornerShape(14.dp),
-                                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                                modifier = Modifier.fillMaxWidth().border(1.dp, GlassBorder, RoundedCornerShape(14.dp))
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("AI Translation Result", fontWeight = FontWeight.Bold, color = CyanPrimary, fontSize = 16.sp)
+                                    Text("AI Translation Result", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Text(doc.translatedText!!, color = TextPrimary, fontSize = 14.sp, lineHeight = 22.sp)
+                                    Text(doc.translatedText!!, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, lineHeight = 22.sp)
                                 }
                             }
                         }
@@ -446,9 +439,9 @@ fun DocumentPreviewScreen(
         ) {
             Button(
                 onClick = { viewModel.watermarkDocument(doc, "CONFIDENTIAL - SCANPRO AI") },
-                colors = ButtonDefaults.buttonColors(containerColor = DarkSurface, contentColor = CyanPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
+                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
             ) {
                 Icon(Icons.Default.BrandingWatermark, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
@@ -457,9 +450,9 @@ fun DocumentPreviewScreen(
 
             Button(
                 onClick = { viewModel.compressDocument(doc) },
-                colors = ButtonDefaults.buttonColors(containerColor = DarkSurface, contentColor = NeonTeal),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.secondary),
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
+                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
             ) {
                 Text("Compress 40%")
             }

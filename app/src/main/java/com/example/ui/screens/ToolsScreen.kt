@@ -74,15 +74,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.ScannedDocument
 import com.example.ui.ScanProViewModel
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonPurple
-import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import com.example.util.PdfEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -113,16 +104,18 @@ fun ToolsScreen(
     var selectedDocsForMerge by remember { mutableStateOf(setOf<Long>()) }
     var showSignatureDialog by remember { mutableStateOf(false) }
 
+    val primaryCyan = MaterialTheme.colorScheme.primary
+
     val tools = listOf(
-        PdfToolItem("watermark", "Watermark PDF", "Add custom text stamp overlay", Icons.Default.BrandingWatermark, CyanPrimary),
-        PdfToolItem("compress", "Compress PDF", "Reduce PDF file size by up to 60%", Icons.Default.Compress, NeonTeal),
-        PdfToolItem("rotate", "Rotate PDF", "Rotate pages by 90° or 180°", Icons.Default.RotateRight, NeonPurple),
+        PdfToolItem("watermark", "Watermark PDF", "Add custom text stamp overlay", Icons.Default.BrandingWatermark, primaryCyan),
+        PdfToolItem("compress", "Compress PDF", "Reduce PDF file size by up to 60%", Icons.Default.Compress, Color(0xFF0D9488)),
+        PdfToolItem("rotate", "Rotate PDF", "Rotate pages by 90° or 180°", Icons.Default.RotateRight, Color(0xFFA855F7)),
         PdfToolItem("merge", "Merge PDFs", "Combine multiple PDF files", Icons.Default.CallMerge, Color(0xFFFF2E93)),
-        PdfToolItem("split", "Split PDF", "Extract pages into new document", Icons.Default.CallSplit, CyanPrimary),
-        PdfToolItem("sign", "Sign PDF", "Draw & embed electronic signature", Icons.Default.Draw, NeonTeal),
-        PdfToolItem("ocr", "OCR PDF Text", "Extract editable text using Gemini", Icons.Default.AutoAwesome, NeonPurple),
+        PdfToolItem("split", "Split PDF", "Extract pages into new document", Icons.Default.CallSplit, primaryCyan),
+        PdfToolItem("sign", "Sign PDF", "Draw & embed electronic signature", Icons.Default.Draw, Color(0xFF0D9488)),
+        PdfToolItem("ocr", "OCR PDF Text", "Extract editable text using Gemini", Icons.Default.AutoAwesome, Color(0xFFA855F7)),
         PdfToolItem("protect", "Protect PDF", "Encrypt document with password PIN", Icons.Default.Lock, Color(0xFFF59E0B)),
-        PdfToolItem("img2pdf", "Image to PDF", "Convert JPG/PNG photo to PDF", Icons.Default.Image, CyanPrimary)
+        PdfToolItem("img2pdf", "Image to PDF", "Convert JPG/PNG photo to PDF", Icons.Default.Image, primaryCyan)
     )
 
     // Interactive Tool Processing Dialog
@@ -130,17 +123,17 @@ fun ToolsScreen(
         val tool = activeTool!!
         AlertDialog(
             onDismissRequest = { activeTool = null },
-            containerColor = DarkSurface,
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(tool.icon, contentDescription = null, tint = tool.color)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(tool.title, color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text(tool.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                 }
             },
             text = {
                 Column {
-                    Text(tool.description, fontSize = 13.sp, color = TextSecondary)
+                    Text(tool.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(16.dp))
 
                     if (tool.id == "watermark") {
@@ -150,10 +143,10 @@ fun ToolsScreen(
                             label = { Text("Watermark Text") },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = CyanPrimary,
-                                unfocusedBorderColor = GlassBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -164,10 +157,10 @@ fun ToolsScreen(
                             label = { Text("Security PIN") },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = CyanPrimary,
-                                unfocusedBorderColor = GlassBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -177,7 +170,7 @@ fun ToolsScreen(
                     Text(
                         if (tool.id == "merge") "Select Documents to Merge:" else "Select Target Document:",
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 14.sp
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -192,12 +185,12 @@ fun ToolsScreen(
                             Card(
                                 shape = RoundedCornerShape(10.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected) Color(0x3300F2FE) else DarkSurfaceVariant
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                                 ),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp)
-                                    .border(1.dp, if (isSelected) CyanPrimary else GlassBorder, RoundedCornerShape(10.dp))
+                                    .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
                                     .clickable {
                                         if (tool.id == "merge") {
                                             selectedDocsForMerge = if (selectedDocsForMerge.contains(doc.id)) {
@@ -211,9 +204,9 @@ fun ToolsScreen(
                                     }
                             ) {
                                 Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                     Spacer(modifier = Modifier.width(10.dp))
-                                    Text(doc.title, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Text(doc.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }
@@ -262,14 +255,14 @@ fun ToolsScreen(
                         }
                         activeTool = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
                     Text("Execute Tool", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { activeTool = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -278,34 +271,34 @@ fun ToolsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Text(
             text = "PDF & Document AI Tools",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text = "Select a professional PDF utility tool below",
             style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         if (processingState.isProcessing) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0x3300F2FE)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
-                    .border(1.dp, CyanPrimary, RoundedCornerShape(12.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
             ) {
                 Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = CyanPrimary)
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(processingState.statusText, color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text(processingState.statusText, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -319,11 +312,11 @@ fun ToolsScreen(
             items(tools) { tool ->
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(130.dp)
-                        .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
                         .clickable {
                             activeTool = tool
                             selectedDocForTool = documents.firstOrNull()
@@ -346,9 +339,9 @@ fun ToolsScreen(
                         }
 
                         Column {
-                            Text(tool.title, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+                            Text(tool.title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(tool.description, fontSize = 11.sp, color = TextSecondary, maxLines = 2)
+                            Text(tool.description, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                         }
                     }
                 }

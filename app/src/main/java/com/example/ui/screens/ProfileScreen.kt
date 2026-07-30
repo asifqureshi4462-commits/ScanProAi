@@ -58,14 +58,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.ScanProViewModel
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBg
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonPurple
-import com.example.ui.theme.NeonTeal
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.ThemeMode
 
 @Composable
@@ -89,31 +81,33 @@ fun ProfileScreen(
     val totalGb = (user?.storageLimitBytes ?: 5_000_000_000L) / (1024 * 1024 * 1024)
     val storageProgress = (storageUsed ?: 125_000_000L).toFloat() / (user?.storageLimitBytes ?: 5_000_000_000L).toFloat()
 
+    val primaryCyan = MaterialTheme.colorScheme.primary
+
     // Premium Subscription Modal
     if (showPremiumModal) {
         AlertDialog(
             onDismissRequest = { showPremiumModal = false },
-            containerColor = DarkSurface,
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFF59E0B))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("ScanPro AI PRO", color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text("ScanPro AI PRO", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                 }
             },
             text = {
                 Column {
-                    Text("Unlock Unlimited Scans, 100 GB Cloud Vault & Full Gemini AI Document Assistant.", fontSize = 13.sp, color = TextSecondary)
+                    Text("Unlock Unlimited Scans, 100 GB Cloud Vault & Full Gemini AI Document Assistant.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x3300F2FE)),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().border(1.dp, CyanPrimary, RoundedCornerShape(12.dp))
+                        modifier = Modifier.fillMaxWidth().border(1.dp, primaryCyan, RoundedCornerShape(12.dp))
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Text("Pro Yearly Plan", fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Text("$29.99 / year (Save 50%)", fontSize = 13.sp, color = CyanPrimary, fontWeight = FontWeight.Bold)
+                            Text("Pro Yearly Plan", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("$29.99 / year (Save 50%)", fontSize = 13.sp, color = primaryCyan, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -124,14 +118,14 @@ fun ProfileScreen(
                         viewModel.authRepository.upgradeToPremium()
                         showPremiumModal = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryCyan, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
                     Text("Upgrade Now", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPremiumModal = false }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -141,8 +135,8 @@ fun ProfileScreen(
     if (showSettingsModal) {
         AlertDialog(
             onDismissRequest = { showSettingsModal = false },
-            containerColor = DarkSurface,
-            title = { Text("App Settings & Security", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("App Settings & Security", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Column {
                     Row(
@@ -150,11 +144,11 @@ fun ProfileScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("App Lock PIN / Biometrics", color = TextPrimary)
+                        Text("App Lock PIN / Biometrics", color = MaterialTheme.colorScheme.onSurface)
                         Switch(
                             checked = appLockEnabled,
                             onCheckedChange = { appLockEnabled = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = CyanPrimary)
+                            colors = SwitchDefaults.colors(checkedThumbColor = primaryCyan)
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -163,11 +157,11 @@ fun ProfileScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Auto Cloud Backup & Sync", color = TextPrimary)
+                        Text("Auto Cloud Backup & Sync", color = MaterialTheme.colorScheme.onSurface)
                         Switch(
                             checked = cloudBackupEnabled,
                             onCheckedChange = { cloudBackupEnabled = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = CyanPrimary)
+                            colors = SwitchDefaults.colors(checkedThumbColor = primaryCyan)
                         )
                     }
                 }
@@ -175,7 +169,7 @@ fun ProfileScreen(
             confirmButton = {
                 Button(
                     onClick = { showSettingsModal = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryCyan, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
                     Text("Done", fontWeight = FontWeight.Bold)
                 }
@@ -186,7 +180,7 @@ fun ProfileScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
@@ -194,10 +188,10 @@ fun ProfileScreen(
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, GlassBorder, RoundedCornerShape(20.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -209,12 +203,12 @@ fun ProfileScreen(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(CyanPrimary, NeonTeal, NeonPurple)
+                                    colors = listOf(primaryCyan, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary)
                                 )
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.Black, modifier = Modifier.size(48.dp))
+                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -222,13 +216,13 @@ fun ProfileScreen(
                     Text(
                         text = user?.displayName ?: "Alex Vance",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Text(
                         text = user?.email ?: "alex.vance@scanpro.ai",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -236,11 +230,11 @@ fun ProfileScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0x2200F2FE))
-                            .border(1.dp, CyanPrimary, RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .border(1.dp, primaryCyan, RoundedCornerShape(20.dp))
                             .padding(horizontal = 16.dp, vertical = 6.dp)
                     ) {
-                        Text("PRO MEMBER • UNLIMITED VAULT", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CyanPrimary)
+                        Text("PRO MEMBER • UNLIMITED VAULT", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = primaryCyan)
                     }
                 }
             }
@@ -267,8 +261,8 @@ fun ProfileScreen(
                     LinearProgressIndicator(
                         progress = { storageProgress.coerceIn(0.01f, 1.0f) },
                         modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                        color = CyanPrimary,
-                        trackColor = Color(0x33FFFFFF)
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 }
             }
@@ -292,13 +286,13 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(CyanPrimary.copy(alpha = 0.15f)),
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Default.Palette,
                                 contentDescription = "Theme Mode",
-                                tint = CyanPrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -337,11 +331,11 @@ fun ProfileScreen(
                                     .weight(1f)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(
-                                        if (isSelected) CyanPrimary else MaterialTheme.colorScheme.surfaceVariant
+                                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                                     )
                                     .border(
                                         width = 1.dp,
-                                        color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.outline,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                                         shape = RoundedCornerShape(12.dp)
                                     )
                                     .clickable { viewModel.setThemeMode(mode) }
@@ -355,7 +349,7 @@ fun ProfileScreen(
                                     Icon(
                                         imageVector = icon,
                                         contentDescription = null,
-                                        tint = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -363,7 +357,7 @@ fun ProfileScreen(
                                         text = label,
                                         fontSize = 12.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -388,7 +382,7 @@ fun ProfileScreen(
                     icon = Icons.Default.Security,
                     title = "App Lock & Security Settings",
                     subtitle = "PIN lock, biometrics & encryption",
-                    color = CyanPrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     onClick = { showSettingsModal = true }
                 )
 
@@ -396,7 +390,7 @@ fun ProfileScreen(
                     icon = Icons.Default.CloudSync,
                     title = "Cloud Backup & Vault Sync",
                     subtitle = "Firebase cloud sync & backup",
-                    color = NeonTeal,
+                    color = MaterialTheme.colorScheme.secondary,
                     onClick = { showSettingsModal = true }
                 )
 
@@ -404,7 +398,7 @@ fun ProfileScreen(
                     icon = Icons.Default.Language,
                     title = "OCR & App Language",
                     subtitle = "Select default scan languages",
-                    color = NeonPurple,
+                    color = MaterialTheme.colorScheme.tertiary,
                     onClick = { showSettingsModal = true }
                 )
 
@@ -412,7 +406,7 @@ fun ProfileScreen(
                     icon = Icons.Default.Security,
                     title = "App Permissions & Setup Wizard",
                     subtitle = "Re-run First-Time setup & permissions",
-                    color = CyanPrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     onClick = {
                         viewModel.markSetupWizardCompleted(false)
                         onNavigateToSetupWizard?.invoke()
@@ -444,10 +438,10 @@ fun ProfileOptionRow(
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, GlassBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
             .clickable { onClick() }
     ) {
         Row(
@@ -467,8 +461,8 @@ fun ProfileOptionRow(
             Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+                Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
