@@ -205,9 +205,33 @@ fun ScannerCameraScreen(
     var cameraProviderInstance by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var focusTapOffset by remember { mutableStateOf<Offset?>(null) }
 
+    // Synchronize Flash/Torch with Camera Control
+    LaunchedEffect(flashEnabled, boundCamera) {
+        boundCamera?.let { cam ->
+            try {
+                if (cam.cameraInfo.hasFlashUnit()) {
+                    cam.cameraControl.enableTorch(flashEnabled)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        imageCapture?.flashMode = if (flashEnabled) {
+            ImageCapture.FLASH_MODE_ON
+        } else {
+            ImageCapture.FLASH_MODE_OFF
+        }
+    }
+
+    // Safely cleanup camera and turn off torch on exit
     DisposableEffect(lifecycleOwner) {
         onDispose {
             try {
+                boundCamera?.let { cam ->
+                    if (cam.cameraInfo.hasFlashUnit()) {
+                        cam.cameraControl.enableTorch(false)
+                    }
+                }
                 cameraProviderInstance?.unbindAll()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -277,7 +301,6 @@ fun ScannerCameraScreen(
                 }
             )
         } else {
-            // Fallback mock scan if camera is unavailable (e.g. emulator without camera)
             val mockBitmap = Bitmap.createBitmap(800, 1200, Bitmap.Config.ARGB_8888)
             viewModel.addCapturedBitmap(mockBitmap)
         }
@@ -388,6 +411,11 @@ fun ScannerCameraScreen(
                                 boundCamera = camera
                                 maxZoomRatio = camera.cameraInfo.zoomState.value?.maxZoomRatio ?: 5f
                                 previewViewInstance = previewView
+
+                                // Re-apply torch if flash was enabled
+                                if (flashEnabled && camera.cameraInfo.hasFlashUnit()) {
+                                    camera.cameraControl.enableTorch(true)
+                                }
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -571,19 +599,19 @@ fun ScannerCameraScreen(
             Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.85f)))
         }
 
-        // Top gradient scrim (legibility for top controls)
+        // Top gradient scrim for visibility
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(160.dp)
+                .height(200.dp)
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent)
+                        colors = listOf(Color.Black.copy(alpha = 0.75f), Color.Transparent)
                     )
                 )
         )
 
-        // Bottom gradient scrim (legibility for bottom controls)
+        // Bottom gradient scrim
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -596,12 +624,13 @@ fun ScannerCameraScreen(
                 )
         )
 
-        // Smart Crop / Confidence Status Banner
+        // Smart Crop / Confidence Status Banner (Properly offset below the top toolbar)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(horizontal = 24.dp)
-                .padding(top = 90.dp),
+                .padding(top = 84.dp),
             contentAlignment = Alignment.TopCenter
         ) {
             Box(
@@ -636,7 +665,7 @@ fun ScannerCameraScreen(
             }
         }
 
-        // Zoom ratio badge (shows briefly while pinching)
+        // Zoom ratio badge
         AnimatedVisibility(
             visible = showZoomBadge,
             enter = fadeIn(),
@@ -658,12 +687,12 @@ fun ScannerCameraScreen(
             }
         }
 
-        // Top Controls Bar
+        // Top Controls Bar (Added top padding to easily click without status bar interference)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(16.dp),
+                .padding(top = 28.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -703,8 +732,26 @@ fun ScannerCameraScreen(
                     )
                 }
 
+                // Working Flash / Torch Toggle Button
                 IconButton(
-                    onClick = { viewModel.flashEnabled.value = !flashEnabled },
+                    onClick = {
+                        val newFlashState = !flashEnabled
+                        viewModel.flashEnabled.value = newFlashState
+                        boundCamera?.let { cam ->
+                            try {
+                                if (cam.cameraInfo.hasFlashUnit()) {
+                                    cam.cameraControl.enableTorch(newFlashState)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                        imageCapture?.flashMode = if (newFlashState) {
+                            ImageCapture.FLASH_MODE_ON
+                        } else {
+                            ImageCapture.FLASH_MODE_OFF
+                        }
+                    },
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(Color.Black.copy(alpha = 0.6f))
@@ -752,7 +799,6 @@ fun ScannerCameraScreen(
                 .padding(bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Rotating scanning tip
             AnimatedVisibility(visible = hasCameraPermission, enter = fadeIn(), exit = fadeOut()) {
                 Text(
                     text = "💡 ${scannerTips[tipIndex]}",
@@ -853,7 +899,6 @@ fun ScannerCameraScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Multi Page Badge / Done Button
                 if (capturedBitmaps.isNotEmpty()) {
                     Button(
                         onClick = { showSaveDialog = true },
@@ -866,7 +911,6 @@ fun ScannerCameraScreen(
                     Spacer(modifier = Modifier.width(60.dp))
                 }
 
-                // Shutter Button with press animation
                 val shutterInteraction = remember { MutableInteractionSource() }
                 val isPressed by shutterInteraction.collectIsPressedAsState()
                 val shutterScale by animateFloatAsState(
@@ -903,7 +947,6 @@ fun ScannerCameraScreen(
                     }
                 }
 
-                // Last Captured Document Thumbnail Button (also opens gallery import when empty)
                 val lastCaptured = capturedBitmaps.lastOrNull()
                 Box(
                     modifier = Modifier
