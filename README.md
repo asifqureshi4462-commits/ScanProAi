@@ -1,12 +1,3 @@
-Aapke project ke liye ek complete, professional aur attractive README.md file
-taiyar ki gayi hai. Isme aapke app ke real features (Gemini AI, CameraX, OpenCV
-Edge Detection, PDFBox encryption, Room DB, Firebase, aur Office Suite) ko
-detail se shamil kiya gaya hai.
-
-Aap is poore code ko copy karke apne project ke root folder mein README.md file
-bana kar paste kar sakte hain:
-
-File: README.md
 
 # ScanPro AI 📄✨
 
