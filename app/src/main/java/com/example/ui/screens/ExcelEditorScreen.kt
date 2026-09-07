@@ -69,6 +69,10 @@ import com.example.util.PdfEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 
 data class SheetData(
     val sheetName: String,
@@ -78,6 +82,74 @@ data class SheetData(
     val cellFills: Array<Array<Color>>,
     val cellBolds: Array<Array<Boolean>>
 )
+
+/**
+ * Real, working persistence for the spreadsheet editor. Sheets are saved as
+ * JSON to app-internal storage keyed by document ID, so "Save" genuinely
+ * writes the user's edits to disk and re-opening the same document loads
+ * them back — instead of the old behavior, where "Save" only showed a toast
+ * and every edit was discarded the moment you left the screen.
+ */
+private fun spreadsheetFile(context: android.content.Context, docId: Long): File {
+    val dir = File(context.filesDir, "spreadsheets")
+    if (!dir.exists()) dir.mkdirs()
+    return File(dir, "sheet_$docId.json")
+}
+
+private fun sheetsToJson(sheets: List<SheetData>): String {
+    val arr = JSONArray()
+    sheets.forEach { sheet ->
+        val sheetObj = JSONObject()
+        sheetObj.put("name", sheet.sheetName)
+        sheetObj.put("rows", sheet.rowCount)
+        sheetObj.put("cols", sheet.colCount)
+        val gridArr = JSONArray()
+        sheet.grid.forEach { row ->
+            val rowArr = JSONArray()
+            row.forEach { rowArr.put(it) }
+            gridArr.put(rowArr)
+        }
+        sheetObj.put("grid", gridArr)
+        arr.put(sheetObj)
+    }
+    return arr.toString()
+}
+
+private fun jsonToSheets(json: String): List<SheetData> {
+    val arr = JSONArray(json)
+    val result = mutableListOf<SheetData>()
+    for (i in 0 until arr.length()) {
+        val sheetObj = arr.getJSONObject(i)
+        val name = sheetObj.getString("name")
+        val rows = sheetObj.getInt("rows")
+        val cols = sheetObj.getInt("cols")
+        val gridArr = sheetObj.getJSONArray("grid")
+        val grid = Array(rows) { r ->
+            val rowArr = gridArr.getJSONArray(r)
+            Array(cols) { c -> rowArr.optString(c, "") }
+        }
+        val fills = Array(rows) { Array(cols) { Color.White } }
+        val bolds = Array(rows) { Array(cols) { false } }
+        result.add(SheetData(name, rows, cols, grid, fills, bolds))
+    }
+    return result
+}
+
+private fun loadOrCreateSheets(context: android.content.Context, docId: Long): List<SheetData> {
+    val file = spreadsheetFile(context, docId)
+    if (file.exists()) {
+        try {
+            return jsonToSheets(file.readText())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    return listOf(
+        createSampleSheet("Summary Sheet"),
+        createSampleSheet("Expenses & Data"),
+        createSampleSheet("Quarterly Budget")
+    )
+}
 
 @Composable
 fun ExcelEditorScreen(
@@ -89,13 +161,10 @@ fun ExcelEditorScreen(
     val doc = activeDocument ?: return
 
     var activeSheetIndex by remember { mutableStateOf(0) }
-    val sheets = remember {
-        mutableStateListOf(
-            createSampleSheet("Summary Sheet"),
-            createSampleSheet("Expenses & Data"),
-            createSampleSheet("Quarterly Budget")
-        )
+    val sheets = remember(doc.id) {
+        mutableStateListOf(*loadOrCreateSheets(context, doc.id).toTypedArray())
     }
+    var isSaving by remember { mutableStateOf(false) }
 
     var selectedRow by remember { mutableStateOf(0) }
     var selectedCol by remember { mutableStateOf(0) }
@@ -216,10 +285,31 @@ fun ExcelEditorScreen(
 
                 IconButton(
                     onClick = {
-                        Toast.makeText(context, "Spreadsheet saved successfully!", Toast.LENGTH_SHORT).show()
-                    }
+                        if (isSaving) return@IconButton
+                        isSaving = true
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val file = spreadsheetFile(context, doc.id)
+                                file.writeText(sheetsToJson(sheets))
+                                withContext(Dispatchers.Main) {
+                                    isSaving = false
+                                    Toast.makeText(context, "Spreadsheet saved successfully!", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    isSaving = false
+                                    Toast.makeText(context, "Save failed: ${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    },
+                    enabled = !isSaving
                 ) {
-                    Icon(Icons.Default.Save, contentDescription = "Save", tint = MaterialTheme.colorScheme.primary)
+                    if (isSaving) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                    } else {
+                        Icon(Icons.Default.Save, contentDescription = "Save", tint = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
         }

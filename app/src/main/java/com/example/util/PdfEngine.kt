@@ -60,10 +60,6 @@ object PdfEngine {
         val pageWidth = 595 // A4 width in pt
         val pageHeight = 842 // A4 height in pt
 
-        val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
-        val page = pdfDocument.startPage(pageInfo)
-        val canvas = page.canvas
-
         val paintTitle = Paint().apply {
             color = Color.BLACK
             textSize = 20f
@@ -75,30 +71,54 @@ object PdfEngine {
             textSize = 12f
         }
 
+        val marginLeft = 40f
+        val marginBottom = pageHeight - 50f
+        var pageNumber = 1
+
+        var page = pdfDocument.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create())
+        var canvas = page.canvas
         var y = 50f
-        canvas.drawText(title, 40f, y, paintTitle)
+        canvas.drawText(title, marginLeft, y, paintTitle)
         y += 40f
 
+        fun newPage() {
+            pdfDocument.finishPage(page)
+            pageNumber += 1
+            page = pdfDocument.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create())
+            canvas = page.canvas
+            y = 50f
+        }
+
+        fun drawLine(text: String) {
+            if (y > marginBottom) newPage()
+            canvas.drawText(text, marginLeft, y, paintBody)
+            y += 18f
+        }
+
+        // No content is ever silently dropped: whenever a line would overflow
+        // the current page, we start a new page instead of breaking out.
         val lines = content.split("\n")
         for (line in lines) {
+            if (line.isEmpty()) {
+                y += 12f
+                if (y > marginBottom) newPage()
+                continue
+            }
             val words = line.split(" ")
             var currentLine = ""
             for (word in words) {
-                if (paintBody.measureText("$currentLine $word") < (pageWidth - 80)) {
-                    currentLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+                val candidate = if (currentLine.isEmpty()) word else "$currentLine $word"
+                if (paintBody.measureText(candidate) < (pageWidth - 80)) {
+                    currentLine = candidate
                 } else {
-                    canvas.drawText(currentLine, 40f, y, paintBody)
-                    y += 18f
-                    if (y > pageHeight - 50) break
+                    drawLine(currentLine)
                     currentLine = word
                 }
             }
             if (currentLine.isNotEmpty()) {
-                canvas.drawText(currentLine, 40f, y, paintBody)
-                y += 18f
+                drawLine(currentLine)
             }
             y += 6f
-            if (y > pageHeight - 50) break
         }
 
         pdfDocument.finishPage(page)
@@ -292,37 +312,118 @@ object PdfEngine {
         outputFiles
     }
 
+    /**
+     * Parses a user-typed page range spec like "1-3, 5, 8-10" into a list of
+     * page-number groups (1-indexed, clamped to [1, maxPage]). Each group in
+     * the returned list becomes one output PDF in [extractPageRanges]. Empty
+     * or invalid groups are silently dropped; returns an empty outer list if
+     * nothing valid was found.
+     */
+    fun parsePageRangeSpec(spec: String, maxPage: Int): List<List<Int>> {
+        if (maxPage <= 0) return emptyList()
+        return spec.split(",")
+            .map { group ->
+                val trimmed = group.trim()
+                if (trimmed.isEmpty()) {
+                    emptyList()
+                } else if (trimmed.contains("-")) {
+                    val parts = trimmed.split("-")
+                    val start = parts.getOrNull(0)?.trim()?.toIntOrNull()
+                    val end = parts.getOrNull(1)?.trim()?.toIntOrNull()
+                    if (start == null) emptyList()
+                    else (start..(end ?: start)).filter { it in 1..maxPage }
+                } else {
+                    val n = trimmed.toIntOrNull()
+                    if (n != null && n in 1..maxPage) listOf(n) else emptyList()
+                }
+            }
+            .filter { it.isNotEmpty() }
+    }
+
+    /**
+     * Extracts exactly the pages the user asked for. Each entry in
+     * [pageGroups] (1-indexed page numbers) becomes its own output PDF file,
+     * so "1-3, 5, 8-10" produces three real files containing those exact
+     * pages — unlike the old behavior, which ignored the typed range
+     * entirely and split the document into one file per page.
+     */
+    suspend fun extractPageRanges(
+        context: Context,
+        inputPdf: File,
+        pageGroups: List<List<Int>>,
+        outputPrefix: String = inputPdf.nameWithoutExtension
+    ): List<File> = withContext(Dispatchers.IO) {
+        val outputFiles = mutableListOf<File>()
+        pageGroups.forEachIndexed { idx, pages ->
+            if (pages.isEmpty()) return@forEachIndexed
+            val bitmaps = pages.mapNotNull { pageNum -> renderPdfPageToBitmap(context, inputPdf, pageNum - 1) }
+            if (bitmaps.isNotEmpty()) {
+                val fileName = "${outputPrefix}_Part${idx + 1}.pdf"
+                outputFiles.add(createPdfFromBitmaps(context, bitmaps, fileName))
+            }
+        }
+        outputFiles
+    }
+
+    /**
+     * Applies REAL PDF encryption (AES-128 via PDFBox) so the file requires
+     * [userPassword] to open in any standard PDF reader. This replaces the
+     * old behavior, which only stamped a plaintext "PROTECTED [PIN: ...]"
+     * banner onto the page image while leaving the document fully readable
+     * and printing the secret PIN directly on the page.
+     */
     suspend fun protectPdf(
         context: Context,
         inputPdf: File,
-        passcodePin: String,
+        userPassword: String,
+        ownerPassword: String = userPassword,
         outputFileName: String = "Protected_${inputPdf.name}"
     ): File = withContext(Dispatchers.IO) {
+        com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(context.applicationContext)
+
         val pageCount = getPdfPageCount(context, inputPdf)
-        val newBitmaps = mutableListOf<Bitmap>()
-
-        for (i in 0 until pageCount) {
-            val bitmap = renderPdfPageToBitmap(context, inputPdf, i) ?: continue
-            val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-            val canvas = Canvas(mutableBitmap)
-
-            val bannerPaint = Paint().apply {
-                color = Color.parseColor("#121824")
-                style = Paint.Style.FILL
+        val document = com.tom_roush.pdfbox.pdmodel.PDDocument()
+        try {
+            for (i in 0 until pageCount) {
+                val bitmap = renderPdfPageToBitmap(context, inputPdf, i) ?: continue
+                val pdRectangle = com.tom_roush.pdfbox.pdmodel.common.PDRectangle(
+                    bitmap.width.toFloat(),
+                    bitmap.height.toFloat()
+                )
+                val page = com.tom_roush.pdfbox.pdmodel.PDPage(pdRectangle)
+                document.addPage(page)
+                val imageXObject = com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory
+                    .createFromImage(document, bitmap)
+                com.tom_roush.pdfbox.pdmodel.PDPageContentStream(document, page).use { stream ->
+                    stream.drawImage(imageXObject, 0f, 0f, pdRectangle.width, pdRectangle.height)
+                }
             }
-            val textPaint = Paint().apply {
-                color = Color.parseColor("#00F2FE")
-                textSize = (mutableBitmap.width / 32).toFloat()
-                isFakeBoldText = true
+
+            val accessPermission = com.tom_roush.pdfbox.pdmodel.encryption.AccessPermission().apply {
+                setCanPrint(true)
+                setCanExtractContent(false)
+                setCanModify(false)
+                setCanModifyAnnotations(false)
+                setCanFillInForm(false)
+                setCanAssembleDocument(false)
             }
+            val protectionPolicy = com.tom_roush.pdfbox.pdmodel.encryption.StandardProtectionPolicy(
+                ownerPassword,
+                userPassword,
+                accessPermission
+            ).apply {
+                encryptionKeyLength = 128
+            }
+            document.protect(protectionPolicy)
 
-            canvas.drawRect(0f, 0f, mutableBitmap.width.toFloat(), 50f, bannerPaint)
-            canvas.drawText("🔒 PROTECTED DOCUMENT [PIN: $passcodePin]", 20f, 35f, textPaint)
-
-            newBitmaps.add(mutableBitmap)
+            val docsDir = File(context.filesContextDir(), "documents")
+            if (!docsDir.exists()) docsDir.mkdirs()
+            val outputFile = File(docsDir, outputFileName)
+            document.save(outputFile)
+            outputFile
+        } finally {
+            document.close()
         }
-
-        createPdfFromBitmaps(context, newBitmaps, outputFileName)
     }
 
     suspend fun applyFilterToPdf(

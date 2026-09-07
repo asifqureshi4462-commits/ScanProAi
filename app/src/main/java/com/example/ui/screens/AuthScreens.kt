@@ -52,6 +52,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import com.example.data.auth.AuthRepository
 
 @Composable
@@ -59,12 +61,13 @@ fun AuthScreen(
     authRepository: AuthRepository,
     onAuthSuccess: () -> Unit
 ) {
+    val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) } // 0: Login, 1: Signup, 2: Phone OTP
 
-    var email by remember { mutableStateOf("alex.vance@scanpro.ai") }
-    var password by remember { mutableStateOf("password123") }
-    var fullName by remember { mutableStateOf("Alex Vance") }
-    var phone by remember { mutableStateOf("+1 555-0199") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var fullName by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var otpCode by remember { mutableStateOf("") }
     var isOtpSent by remember { mutableStateOf(false) }
 
@@ -267,14 +270,34 @@ fun AuthScreen(
                                 )
                                 Spacer(modifier = Modifier.height(20.dp))
                                 Button(
-                                    onClick = { isOtpSent = true },
+                                    onClick = {
+                                        val activity = context as? Activity
+                                        if (activity == null) {
+                                            errorMessage = "Unable to send OTP: no active screen context."
+                                            return@Button
+                                        }
+                                        isLoading = true
+                                        errorMessage = null
+                                        authRepository.sendOtp(
+                                            phone = phone,
+                                            activity = activity,
+                                            onCodeSent = { isLoading = false; isOtpSent = true },
+                                            onAutoVerified = { isLoading = false; onAuthSuccess() },
+                                            onError = { err -> isLoading = false; errorMessage = err }
+                                        )
+                                    },
+                                    enabled = !isLoading,
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(50.dp)
                                 ) {
-                                    Text("Send OTP Code", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    if (isLoading) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                    } else {
+                                        Text("Send OTP Code", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    }
                                 }
                             } else {
                                 Text("Enter 4-digit verification code sent to $phone", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

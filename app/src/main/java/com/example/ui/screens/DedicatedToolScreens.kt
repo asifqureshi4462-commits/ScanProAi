@@ -3,6 +3,9 @@ package com.example.ui.screens
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +59,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Compress
+import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -118,6 +123,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -147,10 +153,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.ScannedDocument
 import com.example.ui.ScanProViewModel
+import com.example.ui.ProcessingState
 import com.example.util.PdfEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 // ==========================================
@@ -366,6 +374,68 @@ fun DocumentSelectorCard(
     }
 }
 
+/**
+ * Observes the ViewModel's shared [ProcessingState] and reacts to the REAL
+ * outcome of a background PDF operation (merge/compress/split/watermark/
+ * protect/etc.) instead of the old pattern of firing the operation and then
+ * unconditionally showing "Success!" after a fixed delay() regardless of
+ * whether it actually worked. On success we toast the real completion
+ * message and navigate back; on failure we toast the real error and stay
+ * on the screen so the user can retry.
+ */
+@Composable
+private fun rememberProcessingObserver(
+    viewModel: ScanProViewModel,
+    onBackClicked: () -> Unit
+): ProcessingState {
+    val context = LocalContext.current
+    val processingState by viewModel.processingState.collectAsState()
+    LaunchedEffect(processingState.completedMessage, processingState.errorMessage) {
+        processingState.completedMessage?.let { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            viewModel.clearProcessingMessage()
+            onBackClicked()
+        }
+        processingState.errorMessage?.let { err ->
+            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+            viewModel.clearProcessingMessage()
+        }
+    }
+    return processingState
+}
+
+/**
+ * Honest "not implemented yet" banner for the Office-format conversion
+ * tools (PDF<->Word/Excel/PowerPoint). Real conversion to/from these binary
+ * formats needs a library like Apache POI and significant engineering — it
+ * is not implemented in this build. Rather than showing a fake progress bar
+ * and a fabricated "success" message (the old behavior), we tell the user
+ * plainly up front so nobody mistakes a placeholder for a real export.
+ */
+@Composable
+private fun ComingSoonBanner(featureName: String) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7E0)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
+    ) {
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Construction, contentDescription = null, tint = Color(0xFF92600A))
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text("Coming Soon", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF92600A))
+                Text(
+                    "$featureName isn't implemented yet in this version — nothing will be converted below.",
+                    fontSize = 11.sp,
+                    color = Color(0xFF92600A)
+                )
+            }
+        }
+    }
+}
+
 // ==========================================
 // 1. PDF TO EXCEL SCREEN
 // ==========================================
@@ -412,6 +482,8 @@ fun PdfToExcelToolScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            ComingSoonBanner("Real PDF-to-Excel conversion")
+
             DocumentSelectorCard(
                 documents = documents,
                 selectedDocument = selectedDoc,
@@ -515,27 +587,22 @@ fun PdfToExcelToolScreen(
 
             Button(
                 onClick = {
-                    if (selectedDoc == null) {
-                        Toast.makeText(context, "Please select a PDF document first", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    isConverting = true
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1800)
-                        isConverting = false
-                        conversionComplete = true
-                    }
+                    Toast.makeText(
+                        context,
+                        "PDF to Excel conversion is coming soon — not available in this build yet.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 },
-                enabled = !isConverting,
+                enabled = false,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                Icon(Icons.Default.TableChart, contentDescription = null)
+                Icon(Icons.Default.Construction, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Convert to Excel Spreadsheet", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("Coming Soon", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
     }
@@ -587,6 +654,8 @@ fun PdfToWordToolScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            ComingSoonBanner("Real PDF-to-Word conversion")
+
             DocumentSelectorCard(
                 documents = documents,
                 selectedDocument = selectedDoc,
@@ -665,27 +734,22 @@ fun PdfToWordToolScreen(
 
             Button(
                 onClick = {
-                    if (selectedDoc == null) {
-                        Toast.makeText(context, "Select a PDF first", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    isConverting = true
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1600)
-                        isConverting = false
-                        isSuccess = true
-                    }
+                    Toast.makeText(
+                        context,
+                        "PDF to Word conversion is coming soon — not available in this build yet.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 },
-                enabled = !isConverting,
+                enabled = false,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                Icon(Icons.Default.Description, contentDescription = null)
+                Icon(Icons.Default.Construction, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Convert to Microsoft Word", fontWeight = FontWeight.Bold)
+                Text("Coming Soon", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -887,9 +951,12 @@ fun ImageToPdfToolScreen(
     var isProcessing by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf("Original") }
     var pdfPageSize by remember { mutableStateOf("A4 Fit") }
+    val pickedUris = remember { mutableStateListOf<Uri>() }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
         if (uris.isNotEmpty()) {
+            pickedUris.clear()
+            pickedUris.addAll(uris)
             Toast.makeText(context, "Loaded ${uris.size} images into queue", Toast.LENGTH_SHORT).show()
         }
     }
@@ -925,7 +992,12 @@ fun ImageToPdfToolScreen(
                     Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = Color(0xFF0EA5E9), modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Select Images from Gallery", fontWeight = FontWeight.Bold)
-                    Text("Pick single or multiple JPG / PNG files to combine", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        if (pickedUris.isEmpty()) "Pick single or multiple JPG / PNG files to combine"
+                        else "${pickedUris.size} image(s) selected",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = { imagePicker.launch("image/*") },
@@ -974,11 +1046,53 @@ fun ImageToPdfToolScreen(
 
             Button(
                 onClick = {
+                    if (pickedUris.isEmpty()) {
+                        Toast.makeText(context, "Select at least one image first", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
                     isProcessing = true
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1200)
-                        isProcessing = false
-                        Toast.makeText(context, "Images converted to PDF successfully!", Toast.LENGTH_SHORT).show()
+                    val engineFilter = when (selectedFilter) {
+                        "Magic Color" -> "Enhance"
+                        "B&W Clean" -> "B&W"
+                        else -> selectedFilter
+                    }
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val bitmaps = pickedUris.mapNotNull { uri ->
+                                context.contentResolver.openInputStream(uri)?.use { stream ->
+                                    BitmapFactory.decodeStream(stream)
+                                }?.let { bmp -> PdfEngine.applyFilterToBitmap(bmp, engineFilter) }
+                            }
+                            if (bitmaps.isEmpty()) {
+                                withContext(Dispatchers.Main) {
+                                    isProcessing = false
+                                    Toast.makeText(context, "Could not read the selected images.", Toast.LENGTH_SHORT).show()
+                                }
+                                return@launch
+                            }
+                            val pdfFile = PdfEngine.createPdfFromBitmaps(context, bitmaps)
+                            val doc = ScannedDocument(
+                                title = pdfFile.nameWithoutExtension,
+                                filePath = pdfFile.absolutePath,
+                                fileType = "PDF",
+                                fileSizeBytes = pdfFile.length(),
+                                pageCount = bitmaps.size
+                            )
+                            val db = com.example.data.local.ScanProDatabase.getDatabase(context)
+                            val id = db.documentDao().insertDocument(doc)
+                            val savedDoc = doc.copy(id = id)
+                            withContext(Dispatchers.Main) {
+                                isProcessing = false
+                                viewModel.setActiveDocument(savedDoc)
+                                Toast.makeText(context, "Images converted to PDF successfully!", Toast.LENGTH_SHORT).show()
+                                onNavigateToDocPreview(savedDoc)
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                isProcessing = false
+                                Toast.makeText(context, "Conversion failed: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
                 },
                 enabled = !isProcessing,
@@ -1006,9 +1120,19 @@ fun OcrTextToolScreen(
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-    var extractedText by remember { mutableStateOf("SCANPRO AI OCR EXTRACTED TEXT:\n\n1. Invoice Number: #INV-2026-8891\n2. Date: July 30, 2026\n3. Total Amount Due: $1,450.00 USD\n4. Status: Paid in Full via Vault Encryption\n\nNotes: Document processed using Gemini AI OCR model with high confidence precision.") }
+    var extractedText by remember { mutableStateOf("") }
     var ocrLanguage by remember { mutableStateOf("English") }
     var isScanning by remember { mutableStateOf(false) }
+    var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val geminiService = remember { com.example.data.ai.GeminiService() }
+
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            val bmp = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+            selectedBitmap = bmp
+            extractedText = ""
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -1033,6 +1157,43 @@ fun OcrTextToolScreen(
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+            ) {
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (selectedBitmap != null) {
+                        Image(
+                            bitmap = selectedBitmap!!.asImageBitmap(),
+                            contentDescription = "Selected image for OCR",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    } else {
+                        Icon(Icons.Default.Image, contentDescription = null, tint = Color(0xFFA855F7), modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Select an Image to Extract Text From", fontWeight = FontWeight.Bold)
+                        Text("Choose a scanned document, invoice, or photo", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    Button(
+                        onClick = { imagePicker.launch("image/*") },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA855F7))
+                    ) {
+                        Text(if (selectedBitmap == null) "Choose Image" else "Choose a Different Image")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -1052,11 +1213,52 @@ fun OcrTextToolScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            Button(
+                onClick = {
+                    val bmp = selectedBitmap
+                    if (bmp == null) {
+                        Toast.makeText(context, "Select an image first", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    isScanning = true
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val result = try {
+                            geminiService.extractTextFromImage(bmp, ocrLanguage)
+                        } catch (e: Exception) {
+                            "OCR failed: ${e.message}"
+                        }
+                        withContext(Dispatchers.Main) {
+                            extractedText = result
+                            isScanning = false
+                        }
+                    }
+                },
+                enabled = !isScanning && selectedBitmap != null,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA855F7)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            ) {
+                if (isScanning) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White)
+                } else {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Extract Text with Gemini AI", fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Text Output Area
             OutlinedTextField(
                 value = extractedText,
                 onValueChange = { extractedText = it },
                 label = { Text("Extracted OCR Text") },
+                placeholder = { Text("Select an image and tap \"Extract Text\" to see results here...") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(240.dp)
@@ -1114,7 +1316,8 @@ fun MergePdfToolScreen(
     val context = LocalContext.current
     val selectedIds = remember { mutableStateListOf<Long>() }
     var mergedTitle by remember { mutableStateOf("Merged_Document") }
-    var isMerging by remember { mutableStateOf(false) }
+    val processingState = rememberProcessingObserver(viewModel, onBackClicked)
+    val isMerging = processingState.isProcessing
 
     Column(
         modifier = Modifier
@@ -1186,15 +1389,8 @@ fun MergePdfToolScreen(
                         Toast.makeText(context, "Select at least 2 PDFs to merge", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    isMerging = true
                     val docsToMerge = documents.filter { selectedIds.contains(it.id) }
                     viewModel.mergeDocuments(docsToMerge)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1500)
-                        isMerging = false
-                        Toast.makeText(context, "Documents merged successfully!", Toast.LENGTH_SHORT).show()
-                        onBackClicked()
-                    }
                 },
                 enabled = !isMerging,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEC4899)),
@@ -1223,7 +1419,8 @@ fun CompressPdfToolScreen(
     val context = LocalContext.current
     var selectedDoc by remember { mutableStateOf<ScannedDocument?>(documents.firstOrNull()) }
     var compressionLevel by remember { mutableStateOf(50f) }
-    var isCompressing by remember { mutableStateOf(false) }
+    val processingState = rememberProcessingObserver(viewModel, onBackClicked)
+    val isCompressing = processingState.isProcessing
 
     Column(
         modifier = Modifier
@@ -1290,14 +1487,7 @@ fun CompressPdfToolScreen(
                         Toast.makeText(context, "Select a PDF first", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    isCompressing = true
                     viewModel.compressDocument(doc)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1500)
-                        isCompressing = false
-                        Toast.makeText(context, "Compressed successfully!", Toast.LENGTH_SHORT).show()
-                        onBackClicked()
-                    }
                 },
                 enabled = !isCompressing,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6)),
@@ -1325,7 +1515,10 @@ fun SignPdfToolScreen(
     val documents by viewModel.documents.collectAsState()
     val context = LocalContext.current
     var selectedDoc by remember { mutableStateOf<ScannedDocument?>(documents.firstOrNull()) }
-    var points by remember { mutableStateOf(listOf<androidx.compose.ui.geometry.Offset>()) }
+    var points by remember { mutableStateOf(listOf<androidx.compose.ui.geometry.Offset?>()) }
+    val processingState = rememberProcessingObserver(viewModel, onBackClicked)
+    val isSigning = processingState.isProcessing
+    var canvasSizePx by remember { mutableStateOf(androidx.compose.ui.geometry.Size(400f, 200f)) }
 
     Column(
         modifier = Modifier
@@ -1367,21 +1560,31 @@ fun SignPdfToolScreen(
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.White)
                     .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                    .onSizeChanged { size ->
+                        canvasSizePx = androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat())
+                    }
                     .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            points = points + change.position
-                        }
+                        detectDragGestures(
+                            onDragEnd = { points = points + null },
+                            onDrag = { change, _ ->
+                                change.consume()
+                                points = points + change.position
+                            }
+                        )
                     }
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     for (i in 0 until points.size - 1) {
-                        drawLine(
-                            color = Color.Black,
-                            start = points[i],
-                            end = points[i + 1],
-                            strokeWidth = 6f
-                        )
+                        val start = points[i]
+                        val end = points[i + 1]
+                        if (start != null && end != null) {
+                            drawLine(
+                                color = Color.Black,
+                                start = start,
+                                end = end,
+                                strokeWidth = 6f
+                            )
+                        }
                     }
                 }
                 IconButton(
@@ -1396,29 +1599,52 @@ fun SignPdfToolScreen(
 
             Button(
                 onClick = {
-                    if (points.isEmpty()) {
+                    if (points.none { it != null }) {
                         Toast.makeText(context, "Please draw a signature first", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
                     val doc = selectedDoc
-                    if (doc != null) {
-                        val bmp = Bitmap.createBitmap(400, 200, Bitmap.Config.ARGB_8888)
-                        val canvas = android.graphics.Canvas(bmp)
-                        canvas.drawColor(android.graphics.Color.WHITE)
-                        viewModel.signDocument(doc, bmp)
-                        Toast.makeText(context, "Signed document saved!", Toast.LENGTH_SHORT).show()
-                        onBackClicked()
+                    if (doc == null) {
+                        Toast.makeText(context, "Select a PDF first", Toast.LENGTH_SHORT).show()
+                        return@Button
                     }
+                    // Render the ACTUAL drawn strokes onto the signature bitmap
+                    // (the old code created a blank white bitmap here and
+                    // discarded everything the user drew).
+                    val w = canvasSizePx.width.toInt().coerceAtLeast(1)
+                    val h = canvasSizePx.height.toInt().coerceAtLeast(1)
+                    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                    val sigCanvas = android.graphics.Canvas(bmp)
+                    sigCanvas.drawColor(android.graphics.Color.WHITE)
+                    val paint = android.graphics.Paint().apply {
+                        color = android.graphics.Color.BLACK
+                        strokeWidth = 6f
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                        isAntiAlias = true
+                    }
+                    for (i in 0 until points.size - 1) {
+                        val start = points[i]
+                        val end = points[i + 1]
+                        if (start != null && end != null) {
+                            sigCanvas.drawLine(start.x, start.y, end.x, end.y, paint)
+                        }
+                    }
+                    viewModel.signDocument(doc, bmp)
                 },
+                enabled = !isSigning,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                Icon(Icons.Default.Draw, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Apply Signature to PDF", fontWeight = FontWeight.Bold)
+                if (isSigning) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White)
+                } else {
+                    Icon(Icons.Default.Draw, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Apply Signature to PDF", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -1652,6 +1878,8 @@ fun PdfToPptToolScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            ComingSoonBanner("Real PDF-to-PowerPoint conversion")
+
             DocumentSelectorCard(
                 documents = documents,
                 selectedDocument = selectedDoc,
@@ -1709,31 +1937,22 @@ fun PdfToPptToolScreen(
 
             Button(
                 onClick = {
-                    if (selectedDoc == null) {
-                        Toast.makeText(context, "Select a PDF first", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    isConverting = true
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1600)
-                        isConverting = false
-                        Toast.makeText(context, "Presentation (.pptx) created!", Toast.LENGTH_SHORT).show()
-                        onBackClicked()
-                    }
+                    Toast.makeText(
+                        context,
+                        "PDF to PowerPoint conversion is coming soon — not available in this build yet.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 },
-                enabled = !isConverting,
+                enabled = false,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF97316)),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                if (isConverting) CircularProgressIndicator(color = Color.White)
-                else {
-                    Icon(Icons.Default.Slideshow, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Convert to PowerPoint (.pptx)", fontWeight = FontWeight.Bold)
-                }
+                Icon(Icons.Default.Construction, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Coming Soon", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -1780,6 +1999,8 @@ fun ExcelToPdfToolScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            ComingSoonBanner("Real Excel-to-PDF conversion")
+
             Button(
                 onClick = { xlsxPicker.launch("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
@@ -1826,23 +2047,22 @@ fun ExcelToPdfToolScreen(
 
             Button(
                 onClick = {
-                    isConverting = true
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1400)
-                        isConverting = false
-                        Toast.makeText(context, "Spreadsheet converted to PDF!", Toast.LENGTH_SHORT).show()
-                        onBackClicked()
-                    }
+                    Toast.makeText(
+                        context,
+                        "Excel to PDF conversion is coming soon — not available in this build yet.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 },
-                enabled = !isConverting,
+                enabled = false,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                if (isConverting) CircularProgressIndicator(color = Color.White)
-                else Text("Render Excel to PDF", fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.Construction, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Coming Soon", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -1888,6 +2108,8 @@ fun WordToPdfToolScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            ComingSoonBanner("Real Word-to-PDF conversion")
+
             Button(
                 onClick = { docxPicker.launch("application/vnd.openxmlformats-officedocument.wordprocessingml.document") },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8)),
@@ -1931,23 +2153,22 @@ fun WordToPdfToolScreen(
 
             Button(
                 onClick = {
-                    isConverting = true
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1400)
-                        isConverting = false
-                        Toast.makeText(context, "Word file converted to PDF!", Toast.LENGTH_SHORT).show()
-                        onBackClicked()
-                    }
+                    Toast.makeText(
+                        context,
+                        "Word to PDF conversion is coming soon — not available in this build yet.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 },
-                enabled = !isConverting,
+                enabled = false,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8)),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                if (isConverting) CircularProgressIndicator(color = Color.White)
-                else Text("Convert Word to PDF", fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.Construction, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Coming Soon", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -1965,8 +2186,9 @@ fun SplitPdfToolScreen(
     val documents by viewModel.documents.collectAsState()
     val context = LocalContext.current
     var selectedDoc by remember { mutableStateOf<ScannedDocument?>(documents.firstOrNull()) }
-    var splitRange by remember { mutableStateOf("1-3, 5, 8-10") }
-    var isSplitting by remember { mutableStateOf(false) }
+    var splitRange by remember { mutableStateOf("") }
+    val processingState = rememberProcessingObserver(viewModel, onBackClicked)
+    val isSplitting = processingState.isProcessing
 
     Column(
         modifier = Modifier
@@ -2001,6 +2223,7 @@ fun SplitPdfToolScreen(
                 value = splitRange,
                 onValueChange = { splitRange = it },
                 label = { Text("Page Range to Extract (e.g., 1-3, 5)") },
+                placeholder = { Text("Leave blank to split into one file per page") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -2014,14 +2237,7 @@ fun SplitPdfToolScreen(
                         Toast.makeText(context, "Select a PDF first", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    isSplitting = true
-                    viewModel.splitDocument(doc)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1200)
-                        isSplitting = false
-                        Toast.makeText(context, "Split pages extracted!", Toast.LENGTH_SHORT).show()
-                        onBackClicked()
-                    }
+                    viewModel.splitDocument(doc, splitRange)
                 },
                 enabled = !isSplitting,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
@@ -2050,7 +2266,8 @@ fun WatermarkPdfToolScreen(
     val context = LocalContext.current
     var selectedDoc by remember { mutableStateOf<ScannedDocument?>(documents.firstOrNull()) }
     var watermarkText by remember { mutableStateOf("CONFIDENTIAL - SCANPRO AI") }
-    var isWatermarking by remember { mutableStateOf(false) }
+    val processingState = rememberProcessingObserver(viewModel, onBackClicked)
+    val isWatermarking = processingState.isProcessing
 
     Column(
         modifier = Modifier
@@ -2098,14 +2315,7 @@ fun WatermarkPdfToolScreen(
                         Toast.makeText(context, "Select a PDF first", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    isWatermarking = true
                     viewModel.watermarkDocument(doc, watermarkText)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1200)
-                        isWatermarking = false
-                        Toast.makeText(context, "Watermark stamped on document!", Toast.LENGTH_SHORT).show()
-                        onBackClicked()
-                    }
                 },
                 enabled = !isWatermarking,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22D3EE), contentColor = Color.Black),
@@ -2133,9 +2343,10 @@ fun PasswordProtectToolScreen(
     val documents by viewModel.documents.collectAsState()
     val context = LocalContext.current
     var selectedDoc by remember { mutableStateOf<ScannedDocument?>(documents.firstOrNull()) }
-    var passwordInput by remember { mutableStateOf("1234") }
-    var confirmPasswordInput by remember { mutableStateOf("1234") }
-    var isProtecting by remember { mutableStateOf(false) }
+    var passwordInput by remember { mutableStateOf("") }
+    var confirmPasswordInput by remember { mutableStateOf("") }
+    val processingState = rememberProcessingObserver(viewModel, onBackClicked)
+    val isProtecting = processingState.isProcessing
 
     Column(
         modifier = Modifier
@@ -2199,14 +2410,7 @@ fun PasswordProtectToolScreen(
                         Toast.makeText(context, "Select a PDF first", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    isProtecting = true
                     viewModel.protectDocument(doc, passwordInput)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        kotlinx.coroutines.delay(1200)
-                        isProtecting = false
-                        Toast.makeText(context, "Document encrypted with PIN!", Toast.LENGTH_SHORT).show()
-                        onBackClicked()
-                    }
                 },
                 enabled = !isProtecting,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B), contentColor = Color.Black),

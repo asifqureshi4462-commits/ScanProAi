@@ -38,7 +38,8 @@ data class ProcessingState(
     val isProcessing: Boolean = false,
     val progress: Float = 0f,
     val statusText: String = "",
-    val completedMessage: String? = null
+    val completedMessage: String? = null,
+    val errorMessage: String? = null
 )
 
 class ScanProViewModel(application: Application) : AndroidViewModel(application) {
@@ -197,14 +198,14 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
 
         dao.insertDocument(
             ScannedDocument(
-                title = "AI_Scan_Contract_2026.pdf",
+                title = "[Sample] AI_Scan_Contract_2026.pdf",
                 filePath = sample1File.absolutePath,
                 fileType = "PDF",
                 fileSizeBytes = sample1File.length(),
                 pageCount = 1,
                 category = "Documents",
                 extractedText = "SCANPRO AI MASTER SERVICE AGREEMENT 1. Purpose: AI-Powered Document Management",
-                summary = "Master Service Agreement covering AI-Powered Document Management, 99.99% OCR SLA, and cloud encryption.",
+                summary = "[Sample data for demo purposes] Master Service Agreement covering AI-Powered Document Management, 99.99% OCR SLA, and cloud encryption.",
                 isFavorite = true,
                 createdAt = System.currentTimeMillis() - 86400000L
             )
@@ -212,14 +213,14 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
 
         dao.insertDocument(
             ScannedDocument(
-                title = "Passport_ID_Scan.pdf",
+                title = "[Sample] Passport_ID_Scan.pdf",
                 filePath = sample2File.absolutePath,
                 fileType = "PDF",
                 fileSizeBytes = sample2File.length(),
                 pageCount = 1,
                 category = "ID Card",
                 extractedText = "IDENTITY SCAN VERIFICATION Name: Alex Vance ID No: SP-992014-X",
-                summary = "Passport identity scan for Alex Vance. Verified status.",
+                summary = "[Sample data for demo purposes] Passport identity scan for Alex Vance. Verified status.",
                 isFavorite = false,
                 createdAt = System.currentTimeMillis() - 172800000L
             )
@@ -227,14 +228,14 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
 
         dao.insertDocument(
             ScannedDocument(
-                title = "Q2_Financial_Report.pdf",
+                title = "[Sample] Q2_Financial_Report.pdf",
                 filePath = sample3File.absolutePath,
                 fileType = "PDF",
                 fileSizeBytes = sample3File.length(),
                 pageCount = 1,
                 category = "Receipts",
                 extractedText = "Q2 FINANCIAL SUMMARY Revenue: $4,250,000 Net Growth: +34%",
-                summary = "Quarterly financial summary showing $4.25M revenue and +34% growth.",
+                summary = "[Sample data for demo purposes] Quarterly financial summary showing $4.25M revenue and +34% growth.",
                 isFavorite = true,
                 createdAt = System.currentTimeMillis() - 259200000L
             )
@@ -456,7 +457,13 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Compressing PDF...")
             val inputFile = File(doc.filePath)
-            val outputFile = PdfEngine.compressPdf(getApplication(), inputFile)
+            val originalSize = inputFile.length()
+            val outputFile = try {
+                PdfEngine.compressPdf(getApplication(), inputFile)
+            } catch (e: Exception) {
+                processingState.value = ProcessingState(isProcessing = false, errorMessage = "Compression failed: ${e.message}")
+                return@launch
+            }
 
             val newDoc = doc.copy(
                 id = 0,
@@ -469,9 +476,26 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
             val id = dao.insertDocument(newDoc)
             setActiveDocument(newDoc.copy(id = id))
 
+            // Report the REAL size change instead of a hardcoded "40%" claim.
+            // Rasterizing pages can sometimes make files larger, not smaller,
+            // so we say so honestly rather than always claiming a win.
+            val newSize = outputFile.length()
+            val message = if (originalSize > 0) {
+                val percent = ((originalSize - newSize) * 100.0 / originalSize)
+                if (percent >= 1.0) {
+                    "Compressed PDF by ${percent.toInt()}%!"
+                } else if (percent <= -1.0) {
+                    "Note: compression made this file ${(-percent).toInt()}% larger (image-heavy pages can grow when rasterized)."
+                } else {
+                    "Compressed (size roughly unchanged)."
+                }
+            } else {
+                "Compression complete."
+            }
+
             processingState.value = ProcessingState(
                 isProcessing = false,
-                completedMessage = "Compressed PDF by 40%!"
+                completedMessage = message
             )
         }
     }
@@ -552,11 +576,31 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun splitDocument(doc: ScannedDocument) {
+    fun splitDocument(doc: ScannedDocument, rangeSpec: String = "") {
         viewModelScope.launch {
             processingState.value = ProcessingState(isProcessing = true, progress = 0.4f, statusText = "Splitting PDF document...")
             val inputFile = File(doc.filePath)
-            val outputFiles = PdfEngine.splitPdf(getApplication(), inputFile, splitInterval = 1)
+            val totalPages = PdfEngine.getPdfPageCount(getApplication(), inputFile)
+
+            val outputFiles = try {
+                if (rangeSpec.isBlank()) {
+                    // No range given: fall back to one file per page.
+                    PdfEngine.splitPdf(getApplication(), inputFile, splitInterval = 1)
+                } else {
+                    val groups = PdfEngine.parsePageRangeSpec(rangeSpec, totalPages)
+                    if (groups.isEmpty()) {
+                        processingState.value = ProcessingState(
+                            isProcessing = false,
+                            errorMessage = "That page range didn't match any pages in this ${totalPages}-page document."
+                        )
+                        return@launch
+                    }
+                    PdfEngine.extractPageRanges(getApplication(), inputFile, groups, doc.title.substringBeforeLast("."))
+                }
+            } catch (e: Exception) {
+                processingState.value = ProcessingState(isProcessing = false, errorMessage = "Split failed: ${e.message}")
+                return@launch
+            }
 
             outputFiles.forEachIndexed { idx, file ->
                 val newDoc = ScannedDocument(
@@ -580,10 +624,27 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun protectDocument(doc: ScannedDocument, pin: String) {
+        if (pin.length < 4) {
+            processingState.value = ProcessingState(
+                isProcessing = false,
+                completedMessage = null,
+                errorMessage = "PIN must be at least 4 characters."
+            )
+            return
+        }
         viewModelScope.launch {
             processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Encrypting PDF with PIN...")
             val inputFile = File(doc.filePath)
-            val outputFile = PdfEngine.protectPdf(getApplication(), inputFile, pin)
+            val outputFile = try {
+                PdfEngine.protectPdf(getApplication(), inputFile, pin)
+            } catch (e: Exception) {
+                processingState.value = ProcessingState(
+                    isProcessing = false,
+                    completedMessage = null,
+                    errorMessage = "Failed to encrypt PDF: ${e.message}"
+                )
+                return@launch
+            }
 
             val newDoc = doc.copy(
                 id = 0,
@@ -729,6 +790,6 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun clearProcessingMessage() {
-        processingState.value = processingState.value.copy(completedMessage = null)
+        processingState.value = processingState.value.copy(completedMessage = null, errorMessage = null)
     }
 }

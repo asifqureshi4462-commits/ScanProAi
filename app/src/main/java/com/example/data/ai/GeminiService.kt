@@ -31,6 +31,27 @@ class GeminiService {
         }
     }
 
+    /** True if a real Gemini API key is configured and live calls will be made. */
+    fun isConfigured(): Boolean = getApiKey().isNotEmpty()
+
+    /**
+     * Runs real OCR on [bitmap] via Gemini Vision. If no API key is
+     * configured, this returns a clearly labeled placeholder instead of
+     * fabricated "extracted" text, so the UI never presents demo content
+     * as if it were a real reading of the user's document.
+     */
+    suspend fun extractTextFromImage(bitmap: Bitmap, language: String = "English"): String {
+        if (!isConfigured()) {
+            return "⚠️ DEMO MODE — no Gemini API key configured.\n\n" +
+                "This app cannot read your image without a real API key. Add your " +
+                "Gemini key to .env (see .env.example) to enable real OCR text extraction."
+        }
+        val prompt = "Extract ALL visible text from this image exactly as it appears in $language, " +
+            "preserving line breaks and structure as closely as possible. " +
+            "Return ONLY the extracted text with no commentary, no markdown, and no extra formatting."
+        return generateContent(prompt, bitmap)
+    }
+
     suspend fun generateContent(prompt: String, bitmap: Bitmap? = null): String = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
         if (apiKey.isEmpty()) {
@@ -116,22 +137,26 @@ class GeminiService {
     }
 
     private fun getOfflineResponse(prompt: String, bitmap: Bitmap?): String {
+        val demoBanner = "⚠️ DEMO MODE (no Gemini API key configured) — this is placeholder text, " +
+            "not a real AI analysis of your content. Add a key to .env to enable real responses.\n\n"
         val lower = prompt.lowercase()
-        return when {
+        return demoBanner + when {
             lower.contains("summarize") || lower.contains("summary") -> {
-                "📄 **Executive AI Summary**\n\n• **Document Type**: Official Scanned File / Contract / Invoice\n• **Key Findings**: The document contains valid terms, dates, and account details verified by ScanPro AI Engine.\n• **Action Items**: Review required fields, verify dates, and sign if applicable.\n• **Status**: Processed & Ready for Archival."
+                "📄 **Sample Executive Summary (demo)**\n\n• **Document Type**: Sample placeholder\n• **Key Findings**: Configure a Gemini API key to get a real summary of your actual document.\n• **Action Items**: N/A in demo mode.\n• **Status**: Demo output only."
             }
             lower.contains("translate") -> {
-                "🌐 **AI Translated Content**\n\n[Translated output generated cleanly with structural integrity retention]."
+                "🌐 **Sample Translation (demo)**\n\nThis is placeholder text. Configure a Gemini API key to get a real translation of your document."
             }
             lower.contains("correct") || lower.contains("grammar") -> {
-                "✨ **AI Enhanced & Corrected Text**\n\nAll OCR artifacts, line splits, and spelling errors have been cleaned and formatted for high readability."
+                "✨ **Sample Correction (demo)**\n\nThis is placeholder text. Configure a Gemini API key to get real grammar correction."
             }
             bitmap != null -> {
-                "🔍 **ScanPro Optical OCR Intelligence**\n\nInvoice / Document #SP-2026-882\nDate: July 29, 2026\nStatus: Paid & Verified\nTotal Amount: $1,250.00\n\nExtracted Text:\nThis document hereby confirms the delivery and inspection of ScanPro AI digital assets."
+                "🔍 **Sample OCR Output (demo)**\n\nThis is placeholder text, not real text read from your image. " +
+                    "Configure a Gemini API key to enable real OCR extraction."
             }
             else -> {
-                "🤖 **ScanPro AI Assistant**\n\nI have analyzed your document query: \"$prompt\".\n\nYour document is indexed and secure. Let me know if you would like me to extract key figures, format for export, or convert to PDF/Word!"
+                "🤖 **ScanPro AI Assistant (demo mode)**\n\nI can't reach Gemini right now because no API key is configured, " +
+                    "so I can't actually answer: \"$prompt\". Add a Gemini API key to .env to enable real AI responses."
             }
         }
     }
