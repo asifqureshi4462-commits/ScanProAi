@@ -1,12 +1,9 @@
 package com.example.ui.screens
 
-import android.graphics.BitmapFactory
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,48 +11,35 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.BrandingWatermark
-import androidx.compose.material.icons.filled.BusinessCenter
 import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.CallSplit
-import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudUpload
@@ -64,54 +48,33 @@ import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Draw
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
-import androidx.compose.material.icons.filled.FormatListNumbered
-import androidx.compose.material.icons.filled.FormatUnderlined
-import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.LooksOne
-import androidx.compose.material.icons.filled.LooksTwo
 import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Password
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.Transform
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Slider
@@ -135,26 +98,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.ScannedDocument
-import com.example.ui.ScanProViewModel
 import com.example.ui.ProcessingState
+import com.example.ui.ScanProViewModel
 import com.example.util.PdfEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -247,7 +205,7 @@ fun DocumentSelectorCard(
     onDocumentSelected: (ScannedDocument) -> Unit,
     onPickExternalFile: () -> Unit
 ) {
-    var selectedTab by remember { mutableStateOf(0) } // 0: Vault, 1: External, 2: Cloud
+    var selectedTab by remember { mutableStateOf(0) }
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -375,15 +333,6 @@ fun DocumentSelectorCard(
     }
 }
 
-/**
- * Observes the ViewModel's shared [ProcessingState] and reacts to the REAL
- * outcome of a background PDF operation (merge/compress/split/watermark/
- * protect/etc.) instead of the old pattern of firing the operation and then
- * unconditionally showing "Success!" after a fixed delay() regardless of
- * whether it actually worked. On success we toast the real completion
- * message and navigate back; on failure we toast the real error and stay
- * on the screen so the user can retry.
- */
 @Composable
 private fun rememberProcessingObserver(
     viewModel: ScanProViewModel,
@@ -405,14 +354,6 @@ private fun rememberProcessingObserver(
     return processingState
 }
 
-/**
- * Honest "not implemented yet" banner for the Office-format conversion
- * tools (PDF<->Word/Excel/PowerPoint). Real conversion to/from these binary
- * formats needs a library like Apache POI and significant engineering — it
- * is not implemented in this build. Rather than showing a fake progress bar
- * and a fabricated "success" message (the old behavior), we tell the user
- * plainly up front so nobody mistakes a placeholder for a real export.
- */
 @Composable
 private fun ComingSoonBanner(featureName: String) {
     Card(
@@ -450,7 +391,7 @@ fun PdfToExcelToolScreen(
     val context = LocalContext.current
     var selectedDoc by remember { mutableStateOf<ScannedDocument?>(documents.firstOrNull()) }
     var isOcrEnabled by remember { mutableStateOf(true) }
-    var selectedFormat by remember { mutableStateOf("xlsx") } // xlsx or csv
+    var selectedFormat by remember { mutableStateOf("xlsx") }
     var isConverting by remember { mutableStateOf(false) }
     var conversionComplete by remember { mutableStateOf(false) }
 
@@ -494,7 +435,6 @@ fun PdfToExcelToolScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Tool Options Card
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -771,8 +711,7 @@ fun TextToPdfToolScreen(
     var textContent by remember { mutableStateOf("Type or paste your text here to create a professional PDF document...\n\nScanPro AI Text-to-PDF Studio creates formatted, printable PDFs instantly.") }
     var isBold by remember { mutableStateOf(false) }
     var isItalic by remember { mutableStateOf(false) }
-    var fontSizePt by remember { mutableStateOf(14f) }
-    var alignment by remember { mutableStateOf("Left") }
+    val fontSizePt by remember { mutableStateOf(14f) }
     var headerText by remember { mutableStateOf("ScanPro AI Notes") }
     var footerText by remember { mutableStateOf("Page 1") }
     var isGenerating by remember { mutableStateOf(false) }
@@ -814,7 +753,6 @@ fun TextToPdfToolScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Text Editor Actions Bar
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -834,7 +772,6 @@ fun TextToPdfToolScreen(
                 Text("${textContent.length} chars | ${textContent.split("\\s+".toRegex()).size} words", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            // Formatting Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -855,7 +792,6 @@ fun TextToPdfToolScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Large Text Area
             OutlinedTextField(
                 value = textContent,
                 onValueChange = { textContent = it },
@@ -913,7 +849,7 @@ fun TextToPdfToolScreen(
                         val db = com.example.data.local.ScanProDatabase.getDatabase(context)
                         val id = db.documentDao().insertDocument(doc)
                         val savedDoc = doc.copy(id = id)
-                        CoroutineScope(Dispatchers.Main).launch {
+                        withContext(Dispatchers.Main) {
                             isGenerating = false
                             viewModel.setActiveDocument(savedDoc)
                             onNavigateToDocPreview(savedDoc)
@@ -954,7 +890,9 @@ fun ImageToPdfToolScreen(
     var pdfPageSize by remember { mutableStateOf("A4 Fit") }
     val pickedUris = remember { mutableStateListOf<Uri>() }
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
             pickedUris.clear()
             pickedUris.addAll(uris)
@@ -1059,10 +997,13 @@ fun ImageToPdfToolScreen(
                     }
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
-                            val bitmaps = pickedUris.mapNotNull { uri ->
-                                context.contentResolver.openInputStream(uri)?.use { stream ->
+                            val bitmaps: List<Bitmap> = pickedUris.mapNotNull { uri: Uri ->
+                                val rawBitmap: Bitmap? = context.contentResolver.openInputStream(uri)?.use { stream ->
                                     BitmapFactory.decodeStream(stream)
-                                }?.let { bmp -> PdfEngine.applyFilterToBitmap(bmp, engineFilter) }
+                                }
+                                rawBitmap?.let { bmp: Bitmap ->
+                                    PdfEngine.applyFilterToBitmap(bmp, engineFilter)
+                                }
                             }
                             if (bitmaps.isEmpty()) {
                                 withContext(Dispatchers.Main) {
@@ -1127,9 +1068,13 @@ fun OcrTextToolScreen(
     var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val geminiService = remember { com.example.data.ai.GeminiService() }
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
         if (uri != null) {
-            val bmp = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+            val bmp: Bitmap? = context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream)
+            }
             selectedBitmap = bmp
             extractedText = ""
         }
@@ -1252,9 +1197,6 @@ fun OcrTextToolScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Text Output Area
             OutlinedTextField(
                 value = extractedText,
                 onValueChange = { extractedText = it },
@@ -1267,7 +1209,6 @@ fun OcrTextToolScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1553,7 +1494,6 @@ fun SignPdfToolScreen(
             Text("Draw Signature Below:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Interactive Drawing Canvas
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1609,9 +1549,6 @@ fun SignPdfToolScreen(
                         Toast.makeText(context, "Select a PDF first", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    // Render the ACTUAL drawn strokes onto the signature bitmap
-                    // (the old code created a blank white bitmap here and
-                    // discarded everything the user drew).
                     val w = canvasSizePx.width.toInt().coerceAtLeast(1)
                     val h = canvasSizePx.height.toInt().coerceAtLeast(1)
                     val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
@@ -1662,7 +1599,7 @@ fun QrCodeScannerToolScreen(
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     var isFlashOn by remember { mutableStateOf(false) }
-    var lastScannedResult by remember { mutableStateOf("https://scanpro.ai/vault/share?id=88219") }
+    val lastScannedResult by remember { mutableStateOf("https://scanpro.ai/vault/share?id=88219") }
 
     Column(
         modifier = Modifier
@@ -1686,7 +1623,6 @@ fun QrCodeScannerToolScreen(
             }
         }
 
-        // Camera Frame Viewfinder Simulation
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -1708,7 +1644,6 @@ fun QrCodeScannerToolScreen(
             }
         }
 
-        // Result Card
         Card(
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1748,7 +1683,7 @@ fun QrCodeScannerToolScreen(
 }
 
 // ==========================================
-// 10. SPECIALIZED CARD SCANNER (ID Card / Passport / Receipt)
+// 10. SPECIALIZED CARD SCANNER
 // ==========================================
 @Composable
 fun SpecializedScanToolScreen(
@@ -1857,7 +1792,6 @@ fun PdfToPptToolScreen(
     var slideRule by remember { mutableStateOf("One slide per page") }
     var selectedTheme by remember { mutableStateOf("Clean Corporate") }
     var isEditableText by remember { mutableStateOf(true) }
-    var isConverting by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -1969,10 +1903,8 @@ fun ExcelToPdfToolScreen(
     onNavigateToDocPreview: (ScannedDocument) -> Unit
 ) {
     val context = LocalContext.current
-    var pageSize by remember { mutableStateOf("A4") }
     var orientation by remember { mutableStateOf("Landscape") }
     var isFitSheet by remember { mutableStateOf(true) }
-    var isConverting by remember { mutableStateOf(false) }
 
     val xlsxPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
@@ -2081,7 +2013,6 @@ fun WordToPdfToolScreen(
     val context = LocalContext.current
     var isHyperlinks by remember { mutableStateOf(true) }
     var isCompressImages by remember { mutableStateOf(true) }
-    var isConverting by remember { mutableStateOf(false) }
 
     val docxPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
@@ -2437,7 +2368,7 @@ fun BarcodeScannerToolScreen(
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-    var lastBarcode by remember { mutableStateOf("012345678905 (UPC-A Product Barcode)") }
+    val lastBarcode by remember { mutableStateOf("012345678905 (UPC-A Product Barcode)") }
 
     Column(
         modifier = Modifier
@@ -2579,4 +2510,3 @@ fun BookScanToolScreen(
         }
     }
 }
-
