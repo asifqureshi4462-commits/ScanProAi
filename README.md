@@ -1,3 +1,13 @@
+Aapke project ke liye ek complete, professional aur attractive README.md file
+taiyar ki gayi hai. Isme aapke app ke real features (Gemini AI, CameraX, OpenCV
+Edge Detection, PDFBox encryption, Room DB, Firebase, aur Office Suite) ko
+detail se shamil kiya gaya hai.
+
+Aap is poore code ko copy karke apne project ke root folder mein README.md file
+bana kar paste kar sakte hain:
+
+File: README.md
+
 # ScanPro AI 📄✨
 
 <p align="center">
@@ -98,3 +108,61 @@
    ```bash
    git clone https://github.com/your-username/ScanPro-AI.git
    cd ScanPro-AI
+
+2.  Environment Variables Configure karein (.env): Project ke root folder mein
+    .env file banayein (ya .env.example ko copy karein) aur apna Gemini API key
+    add karein:
+
+    GEMINI_API_KEY=your_gemini_api_key_here
+
+    (Gemini API key aap Google AI Studio se free mein le sakte hain).
+
+3.  Firebase Setup (Optional lekin Recommended):
+
+      - Firebase Console par naya project banayein.
+      - Package name com.aistudio.scanproai.app add karein.
+      - google-services.json file download karke ScanProAi-main/app/ folder mein
+        daal dein. (Note: Agar Firebase file na ho, tab bhi app Guest Vault aur
+        offline features ke sath chale gi).
+
+4.  Project Build karein:
+
+      - Android Studio mein project open karein.
+      - Gradle Sync run karein.
+      - Device ya Emulator connect karke Run (Shift + F10) dabayein.
+
+📂 Project Directory Structure
+
+ScanProAi-main/
+├── app/
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/example/
+│   │   │   │   ├── data/
+│   │   │   │   │   ├── ai/          # Gemini API Client & Prompts
+│   │   │   │   │   ├── auth/        # Firebase & Guest Session Repository
+│   │   │   │   │   └── local/       # Room DB, Entities & DAOs
+│   │   │   │   ├── ui/
+│   │   │   │   │   ├── screens/     # Compose UI Screens (Scanner, PDF, Office, Tools)
+│   │   │   │   │   ├── theme/       # Material 3 Color Schemes & Typography
+│   │   │   │   │   └── ScanProViewModel.kt
+│   │   │   │   └── util/            # OpenCV Detector, PdfEngine (PDFBox)
+│   │   │   └── res/                 # Vector Drawables, Strings, Icons
+│   ├── build.gradle.kts
+│   └── proguard-rules.pro
+├── gradle/
+└── README.md
+
+🔒 Security & Privacy
+
+  - Local-First Processing: Camera stream aur document edge detection mukammal
+    tor par on-device execute hote hain.
+  - Zero Silent Failures: Authentication aur file encryption fail-closed
+    architecture par chalti hain.
+  - PIN Protected: Password protected PDFs standard 128-bit AES encryption use
+    karte hain.
+
+📄 License
+
+Yeh project MIT License ke tehat licensed hai. Mazeed tafseelat ke liye LICENSE
+file dekhein.
