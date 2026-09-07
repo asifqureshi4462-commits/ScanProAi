@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Construction
@@ -108,6 +109,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.ScannedDocument
@@ -137,7 +139,6 @@ fun ToolHeader(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Row(
@@ -168,7 +169,9 @@ fun ToolHeader(
                         text = title,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (badgeText != null) {
                         Spacer(modifier = Modifier.width(8.dp))
@@ -191,7 +194,8 @@ fun ToolHeader(
                     text = description,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -392,8 +396,8 @@ fun PdfToExcelToolScreen(
     var selectedDoc by remember { mutableStateOf<ScannedDocument?>(documents.firstOrNull()) }
     var isOcrEnabled by remember { mutableStateOf(true) }
     var selectedFormat by remember { mutableStateOf("xlsx") }
-    var isConverting by remember { mutableStateOf(false) }
-    var conversionComplete by remember { mutableStateOf(false) }
+    val isConverting by remember { mutableStateOf(false) }
+    val conversionComplete by remember { mutableStateOf(false) }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
@@ -465,7 +469,12 @@ fun PdfToExcelToolScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Output Format", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         FilterChip(
                             selected = selectedFormat == "xlsx",
                             onClick = { selectedFormat = "xlsx" },
@@ -564,8 +573,8 @@ fun PdfToWordToolScreen(
     var ocrLanguage by remember { mutableStateOf("English (US)") }
     var keepFormatting by remember { mutableStateOf(true) }
     var extractImages by remember { mutableStateOf(true) }
-    var isConverting by remember { mutableStateOf(false) }
-    var isSuccess by remember { mutableStateOf(false) }
+    val isConverting by remember { mutableStateOf(false) }
+    val isSuccess by remember { mutableStateOf(false) }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
@@ -619,7 +628,12 @@ fun PdfToWordToolScreen(
 
                     Text("OCR Recognition Language", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         listOf("English (US)", "Spanish", "French", "German").forEach { lang ->
                             FilterChip(
                                 selected = ocrLanguage == lang,
@@ -957,7 +971,12 @@ fun ImageToPdfToolScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Image Filter & Page Options", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(modifier = Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         listOf("Original", "Magic Color", "B&W Clean", "Grayscale").forEach { filter ->
                             FilterChip(
                                 selected = selectedFilter == filter,
@@ -969,7 +988,12 @@ fun ImageToPdfToolScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Page Dimensions", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         listOf("A4 Fit", "Letter", "Auto Crop").forEach { size ->
                             FilterChip(
                                 selected = pdfPageSize == size,
@@ -1145,7 +1169,13 @@ fun OcrTextToolScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Select Recognition Language", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Horizontal scroll prevents language chips (like Japanese) from squishing on phone screens
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         listOf("English", "Spanish", "French", "German", "Japanese").forEach { lang ->
                             FilterChip(
                                 selected = ocrLanguage == lang,
@@ -1609,7 +1639,6 @@ fun QrCodeScannerToolScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -1846,7 +1875,12 @@ fun PdfToPptToolScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Presentation Theme", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         listOf("Clean Corporate", "Modern Dark", "Creative Gradient").forEach { theme ->
                             FilterChip(
                                 selected = selectedTheme == theme,
@@ -1954,7 +1988,12 @@ fun ExcelToPdfToolScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Print & Page Layout Options", fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         listOf("Landscape", "Portrait").forEach { opt ->
                             FilterChip(
                                 selected = orientation == opt,
@@ -2378,7 +2417,6 @@ fun BarcodeScannerToolScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -2507,6 +2545,368 @@ fun BookScanToolScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Start Book Scanner Camera", fontWeight = FontWeight.Bold)
             }
+        }
+    }
+}
+
+
+                val doc = ScannedDocument(
+                    title = destFile.name,
+                    filePath = destFile.absolutePath,
+                    fileType = "PDF",
+                    fileSizeBytes = destFile.length(),
+                    pageCount = 1,
+                    category = "Documents",
+                    createdAt = System.currentTimeMillis()
+                )
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    val db = com.example.data.local.ScanProDatabase.getDatabase(context)
+                    val id = db.documentDao().insertDocument(doc)
+                    viewModel.setActiveDocument(doc.copy(id = id))
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    val openDocumentDedicated: (ScannedDocument) -> Unit = { doc ->
+        viewModel.setActiveDocument(doc)
+        val ext = doc.fileType.uppercase()
+        currentDestination = when {
+            ext.contains("PDF") -> AppDestination.PDF_EDITOR
+            ext.contains("DOC") || ext.contains("TXT") || ext.contains("RTF") -> AppDestination.WORD_EDITOR
+            ext.contains("XLS") || ext.contains("CSV") -> AppDestination.EXCEL_EDITOR
+            ext.contains("PPT") -> AppDestination.PRESENTATION_VIEWER
+            ext.contains("JPG") || ext.contains("PNG") || ext.contains("WEBP") || ext.contains("JPEG") -> AppDestination.IMAGE_EDITOR
+            ext.contains("JSON") || ext.contains("HTML") || ext.contains("XML") -> AppDestination.TEXT_CODE_EDITOR
+            ext.contains("EPUB") -> AppDestination.EPUB_READER
+            ext.contains("ZIP") -> AppDestination.ZIP_MANAGER
+            else -> AppDestination.DOC_PREVIEW
+        }
+    }
+
+    when (currentDestination) {
+        AppDestination.SPLASH -> {
+            SplashScreen(
+                onSplashFinished = {
+                    currentDestination = AppDestination.ONBOARDING
+                }
+            )
+        }
+
+        AppDestination.ONBOARDING -> {
+            OnboardingScreen(
+                onFinishOnboarding = {
+                    currentDestination = AppDestination.AUTH
+                }
+            )
+        }
+
+        AppDestination.AUTH -> {
+            AuthScreen(
+                authRepository = viewModel.authRepository,
+                onAuthSuccess = {
+                    if (!isSetupCompleted) {
+                        currentDestination = AppDestination.SETUP_WIZARD
+                    } else {
+                        currentDestination = AppDestination.MAIN_TABS
+                    }
+                }
+            )
+        }
+
+        AppDestination.SETUP_WIZARD -> {
+            SetupWizardScreen(
+                onSetupComplete = {
+                    viewModel.markSetupWizardCompleted(true)
+                    currentDestination = AppDestination.MAIN_TABS
+                }
+            )
+        }
+
+        AppDestination.SCANNER_CAMERA -> {
+            ScannerCameraScreen(
+                viewModel = viewModel,
+                onCloseScanner = { currentDestination = AppDestination.MAIN_TABS },
+                onSaveSuccess = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.AI_CHAT -> {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                bottomBar = {
+                    BottomNavWithCenterFab(
+                        selectedTab = selectedTab,
+                        onTabSelected = { tab ->
+                            selectedTab = tab
+                            currentDestination = AppDestination.MAIN_TABS
+                        },
+                        onCenterScanClicked = { currentDestination = AppDestination.SCANNER_CAMERA }
+                    )
+                }
+            ) { padding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = padding.calculateBottomPadding())
+                        .statusBarsPadding()
+                ) {
+                    AiChatScreen(viewModel = viewModel)
+                }
+            }
+        }
+
+        AppDestination.PDF_EDITOR -> {
+            PdfViewerEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.WORD_EDITOR -> {
+            WordEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.EXCEL_EDITOR -> {
+            ExcelEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.PRESENTATION_VIEWER -> {
+            PresentationViewerScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.IMAGE_EDITOR -> {
+            ImageEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.TEXT_CODE_EDITOR -> {
+            TextCodeEditorScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.EPUB_READER, AppDestination.ZIP_MANAGER -> {
+            EpubZipScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+            )
+        }
+
+        AppDestination.DOC_PREVIEW -> {
+            Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    DocumentPreviewScreen(
+                        viewModel = viewModel,
+                        onBackClicked = { currentDestination = AppDestination.MAIN_TABS }
+                    )
+                }
+            }
+        }
+
+        AppDestination.MAIN_TABS -> {
+            Scaffold(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onBackground,
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                bottomBar = {
+                    BottomNavWithCenterFab(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it },
+                        onCenterScanClicked = { currentDestination = AppDestination.SCANNER_CAMERA }
+                    )
+                }
+            ) { innerPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = innerPadding.calculateBottomPadding())
+                        .statusBarsPadding()
+                ) {
+                    when (selectedTab) {
+                        0 -> HomeScreen(
+                            viewModel = viewModel,
+                            onNavigateToScan = { currentDestination = AppDestination.SCANNER_CAMERA },
+                            onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
+                            onNavigateToDocPreview = openDocumentDedicated,
+                            onNavigateToTools = { selectedTab = 3 },
+                            onImportFileClicked = { fileImportLauncher.launch("application/*") }
+                        )
+
+                        1 -> FileManagerScreen(
+                            viewModel = viewModel,
+                            onOpenDocument = openDocumentDedicated
+                        )
+
+                        3 -> ToolsScreen(
+                            viewModel = viewModel,
+                            onNavigateToDocPreview = openDocumentDedicated,
+                            onNavigateToCamera = { currentDestination = AppDestination.SCANNER_CAMERA }
+                        )
+
+                        4 -> ProfileScreen(
+                            viewModel = viewModel,
+                            onNavigateToAuth = { currentDestination = AppDestination.AUTH },
+                            onNavigateToSetupWizard = { currentDestination = AppDestination.SETUP_WIZARD }
+                        )
+
+                        else -> HomeScreen(
+                            viewModel = viewModel,
+                            onNavigateToScan = { currentDestination = AppDestination.SCANNER_CAMERA },
+                            onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
+                            onNavigateToDocPreview = openDocumentDedicated,
+                            onNavigateToTools = { selectedTab = 3 },
+                            onImportFileClicked = { fileImportLauncher.launch("application/*") }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomNavWithCenterFab(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
+    onCenterScanClicked: () -> Unit
+) {
+    // Surface handles bottom padding, elevation, and system navigation bar spacing cleanly
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 8.dp,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+    ) {
+        NavigationBar(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.primary,
+            windowInsets = WindowInsets(0, 0, 0, 0),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+        ) {
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
+            val indicatorColor = MaterialTheme.colorScheme.primaryContainer
+
+            NavigationBarItem(
+                selected = selectedTab == 0,
+                onClick = { onTabSelected(0) },
+                icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                label = { Text("HOME", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = primaryColor,
+                    selectedTextColor = primaryColor,
+                    indicatorColor = indicatorColor,
+                    unselectedIconColor = unselectedColor,
+                    unselectedTextColor = unselectedColor
+                )
+            )
+
+            NavigationBarItem(
+                selected = selectedTab == 1,
+                onClick = { onTabSelected(1) },
+                icon = { Icon(Icons.Default.Folder, contentDescription = "Files") },
+                label = { Text("FILES", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = primaryColor,
+                    selectedTextColor = primaryColor,
+                    indicatorColor = indicatorColor,
+                    unselectedIconColor = unselectedColor,
+                    unselectedTextColor = unselectedColor
+                )
+            )
+
+            // Center Floating Action Button
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .align(Alignment.CenterVertically),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(58.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.background)
+                        .border(3.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                        .clickable { onCenterScanClicked() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.DocumentScanner,
+                            contentDescription = "Scan",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
+            }
+
+            NavigationBarItem(
+                selected = selectedTab == 3,
+                onClick = { onTabSelected(3) },
+                icon = { Icon(Icons.Default.Build, contentDescription = "Tools") },
+                label = { Text("TOOLS", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = primaryColor,
+                    selectedTextColor = primaryColor,
+                    indicatorColor = indicatorColor,
+                    unselectedIconColor = unselectedColor,
+                    unselectedTextColor = unselectedColor
+                )
+            )
+
+            NavigationBarItem(
+                selected = selectedTab == 4,
+                onClick = { onTabSelected(4) },
+                icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
+                label = { Text("USER", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = primaryColor,
+                    selectedTextColor = primaryColor,
+                    indicatorColor = indicatorColor,
+                    unselectedIconColor = unselectedColor,
+                    unselectedTextColor = unselectedColor
+                )
+            )
         }
     }
 }
