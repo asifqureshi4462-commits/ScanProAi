@@ -1,6 +1,3 @@
-
-# ScanPro AI 📄✨
-
 <p align="center">
   <img src="app/src/main/res/drawable/scanpro_logo.png" width="130" alt="ScanPro AI Logo" style="border-radius: 24px;"/>
 </p>
