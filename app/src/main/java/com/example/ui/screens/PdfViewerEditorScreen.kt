@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BrandingWatermark
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Draw
@@ -262,7 +263,7 @@ fun PdfViewerEditorScreen(
             .fillMaxSize()
             .background(if (isNightMode) Color(0xFF121212) else MaterialTheme.colorScheme.background)
     ) {
-        // Top Action Bar (with statusBarsPadding to sit cleanly below punch-hole and status bar)
+        // Top Action Bar (statusBarsPadding keeps it safely beneath clock and status bar)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -345,7 +346,7 @@ fun PdfViewerEditorScreen(
                 showAddTextDialog = true
             }
             ToolChipItem("Highlight", Icons.Default.Highlight, selectedToolMode == "HIGHLIGHT") { selectedToolMode = "HIGHLIGHT" }
-            ToolChipItem("Strikeout", Icons.Default.FormatStrikethrough, selectedToolMode == "STRIKE") { selectedToolMode = "STRIKE" }
+            ToolChipItem("Strikeout", Icons.Default.Clear, selectedToolMode == "STRIKE") { selectedToolMode = "STRIKE" }
             ToolChipItem("Signature", Icons.Default.Gesture, selectedToolMode == "SIGN") {
                 textAnnotations.add(TextAnnotation(text = "✍️ Signed by ScanPro", x = 120f, y = 400f, color = Color.Blue))
                 Toast.makeText(context, "Digital Signature Stamp Added!", Toast.LENGTH_SHORT).show()
@@ -361,7 +362,7 @@ fun PdfViewerEditorScreen(
             }
         }
 
-        // Color & Brush Controls Subbar (when DRAW or HIGHLIGHT mode is selected)
+        // Color & Brush Controls Subbar (when DRAW or HIGHLIGHT mode is active)
         if (selectedToolMode == "DRAW" || selectedToolMode == "HIGHLIGHT") {
             Row(
                 modifier = Modifier
@@ -503,7 +504,7 @@ fun PdfViewerEditorScreen(
             }
         }
 
-        // Bottom Page Thumbnails Rail (with navigationBarsPadding so system 3-button nav never covers it)
+        // Bottom Page Thumbnails Rail (navigationBarsPadding prevents 3-button nav overlap)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
