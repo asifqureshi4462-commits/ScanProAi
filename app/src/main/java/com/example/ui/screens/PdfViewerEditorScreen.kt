@@ -1,8 +1,6 @@
 package com.example.ui.screens
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
@@ -17,57 +15,33 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.BrandingWatermark
-import androidx.compose.material.icons.filled.CallMerge
-import androidx.compose.material.icons.filled.CallSplit
-import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Draw
-import androidx.compose.material.icons.filled.FormatColorFill
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.FormatStrikethrough
-import androidx.compose.material.icons.filled.FormatUnderlined
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Highlight
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Nightlight
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Translate
-import androidx.compose.material.icons.filled.ViewAgenda
-import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -75,10 +49,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -92,7 +63,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
@@ -102,9 +72,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.local.ScannedDocument
 import com.example.ui.ScanProViewModel
 import com.example.util.PdfEngine
 import java.io.File
@@ -135,14 +105,12 @@ fun PdfViewerEditorScreen(
     var currentPageIndex by remember { mutableStateOf(0) }
     var totalPages by remember { mutableStateOf(1) }
     var isNightMode by remember { mutableStateOf(false) }
-    var isHorizontalScroll by remember { mutableStateOf(false) }
-    var zoomLevel by remember { mutableStateOf(1.0f) }
 
     var pageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isLoadingPage by remember { mutableStateOf(true) }
 
     // Active Tool Mode
-    var selectedToolMode by remember { mutableStateOf("VIEW") } // VIEW, DRAW, TEXT, HIGHLIGHT, STRIKE, SIGN, WATERMARK, PAGE_MANAGE, AI_ASSIST
+    var selectedToolMode by remember { mutableStateOf("VIEW") } // VIEW, DRAW, TEXT, HIGHLIGHT, STRIKE, SIGN, WATERMARK
     var activeInkColor by remember { mutableStateOf(Color(0xFF2563EB)) }
     var strokeThickness by remember { mutableStateOf(5f) }
 
@@ -294,25 +262,31 @@ fun PdfViewerEditorScreen(
             .fillMaxSize()
             .background(if (isNightMode) Color(0xFF121212) else MaterialTheme.colorScheme.background)
     ) {
-        // Top Action Bar
+        // Top Action Bar (with statusBarsPadding to sit cleanly below punch-hole and status bar)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .statusBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
                 IconButton(onClick = onBackClicked) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-                Column {
+                Spacer(modifier = Modifier.width(4.dp))
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
                         text = doc.title,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "Page ${currentPageIndex + 1} of $totalPages",
@@ -322,7 +296,7 @@ fun PdfViewerEditorScreen(
                 }
             }
 
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { isNightMode = !isNightMode }) {
                     Icon(
                         Icons.Default.Nightlight,
@@ -354,15 +328,15 @@ fun PdfViewerEditorScreen(
             }
         }
 
-        // Editor Toolbar Row (View, Draw, Text, Highlight, Strikeout, Signature, Watermark, Pages)
+        // Editor Toolbar Row (View, Pen, Text, Highlight, Strikeout, Signature, Watermark, OCR)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             ToolChipItem("View", Icons.Default.Crop, selectedToolMode == "VIEW") { selectedToolMode = "VIEW" }
             ToolChipItem("Pen", Icons.Default.Draw, selectedToolMode == "DRAW") { selectedToolMode = "DRAW" }
@@ -387,7 +361,7 @@ fun PdfViewerEditorScreen(
             }
         }
 
-        // Color & Brush Controls Subbar if in Drawing or Highlight mode
+        // Color & Brush Controls Subbar (when DRAW or HIGHLIGHT mode is selected)
         if (selectedToolMode == "DRAW" || selectedToolMode == "HIGHLIGHT") {
             Row(
                 modifier = Modifier
@@ -445,109 +419,125 @@ fun PdfViewerEditorScreen(
             contentAlignment = Alignment.Center
         ) {
             if (isLoadingPage) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             } else if (pageBitmap != null) {
-                Box(
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     modifier = Modifier
+                        .fillMaxSize()
                         .padding(16.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White)
                 ) {
-                    Image(
-                        bitmap = pageBitmap!!.asImageBitmap(),
-                        contentDescription = "PDF Page",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Image(
+                            bitmap = pageBitmap!!.asImageBitmap(),
+                            contentDescription = "PDF Page",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
 
-                    // Canvas Overlay for Drawing & Highlighting
-                    Canvas(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .pointerInput(selectedToolMode, activeInkColor, strokeThickness) {
-                                if (selectedToolMode == "DRAW" || selectedToolMode == "HIGHLIGHT") {
-                                    detectDragGestures(
-                                        onDragStart = { offset ->
-                                            val p = Path().apply { moveTo(offset.x, offset.y) }
-                                            currentPath = p
-                                        },
-                                        onDrag = { change, _ ->
-                                            currentPath?.lineTo(change.position.x, change.position.y)
-                                        },
-                                        onDragEnd = {
-                                            currentPath?.let {
-                                                drawingPaths.add(
-                                                    DrawingPath(
-                                                        path = it,
-                                                        color = if (selectedToolMode == "HIGHLIGHT") activeInkColor.copy(alpha = 0.4f) else activeInkColor,
-                                                        strokeWidth = if (selectedToolMode == "HIGHLIGHT") strokeThickness * 3f else strokeThickness
-                                                    )
-                                                )
-                                            }
-                                            currentPath = null
-                                        }
-                                    )
-                                }
-                            }
-                    ) {
-                        for (dp in drawingPaths) {
-                            drawPath(
-                                path = dp.path,
-                                color = dp.color,
-                                style = Stroke(width = dp.strokeWidth)
-                            )
-                        }
-                    }
-
-                    // Render Text Annotations
-                    textAnnotations.forEach { annotation ->
-                        Box(
+                        // Canvas Overlay for Drawing & Highlighting
+                        Canvas(
                             modifier = Modifier
-                                .padding(start = annotation.x.dp, top = annotation.y.dp)
-                                .background(Color.Yellow.copy(alpha = 0.3f), shape = RoundedCornerShape(4.dp))
-                                .padding(4.dp)
+                                .fillMaxSize()
+                                .pointerInput(selectedToolMode, activeInkColor, strokeThickness) {
+                                    if (selectedToolMode == "DRAW" || selectedToolMode == "HIGHLIGHT") {
+                                        detectDragGestures(
+                                            onDragStart = { offset ->
+                                                val p = Path().apply { moveTo(offset.x, offset.y) }
+                                                currentPath = p
+                                            },
+                                            onDrag = { change, _ ->
+                                                currentPath?.lineTo(change.position.x, change.position.y)
+                                            },
+                                            onDragEnd = {
+                                                currentPath?.let {
+                                                    drawingPaths.add(
+                                                        DrawingPath(
+                                                            path = it,
+                                                            color = if (selectedToolMode == "HIGHLIGHT") activeInkColor.copy(alpha = 0.4f) else activeInkColor,
+                                                            strokeWidth = if (selectedToolMode == "HIGHLIGHT") strokeThickness * 3f else strokeThickness
+                                                        )
+                                                    )
+                                                }
+                                                currentPath = null
+                                            }
+                                        )
+                                    }
+                                }
                         ) {
-                            Text(
-                                text = annotation.text,
-                                color = annotation.color,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
+                            for (dp in drawingPaths) {
+                                drawPath(
+                                    path = dp.path,
+                                    color = dp.color,
+                                    style = Stroke(width = dp.strokeWidth)
+                                )
+                            }
+                        }
+
+                        // Render Text Annotations
+                        textAnnotations.forEach { annotation ->
+                            Box(
+                                modifier = Modifier
+                                    .padding(start = annotation.x.dp, top = annotation.y.dp)
+                                    .background(Color.Yellow.copy(alpha = 0.3f), shape = RoundedCornerShape(4.dp))
+                                    .padding(4.dp)
+                            ) {
+                                Text(
+                                    text = annotation.text,
+                                    color = annotation.color,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
                     }
                 }
+            } else {
+                Text(
+                    text = "Unable to load PDF document",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp
+                )
             }
         }
 
-        // Bottom Page Thumbnails Rail & Navigation
+        // Bottom Page Thumbnails Rail (with navigationBarsPadding so system 3-button nav never covers it)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(vertical = 6.dp)
+                .navigationBarsPadding()
+                .padding(vertical = 8.dp)
         ) {
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(totalPages) { index ->
                     val isSelected = index == currentPageIndex
                     Box(
                         modifier = Modifier
-                            .size(width = 44.dp, height = 58.dp)
-                            .clip(RoundedCornerShape(6.dp))
+                            .size(width = 46.dp, height = 60.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
                             .border(
                                 width = if (isSelected) 2.dp else 1.dp,
                                 color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                shape = RoundedCornerShape(6.dp)
+                                shape = RoundedCornerShape(8.dp)
                             )
                             .clickable { currentPageIndex = index },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("${index + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "${index + 1}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -567,13 +557,23 @@ fun ToolChipItem(
             .clip(RoundedCornerShape(8.dp))
             .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
