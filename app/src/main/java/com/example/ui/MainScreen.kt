@@ -3,6 +3,7 @@ package com.example.ui
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -111,6 +112,17 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
 
     var currentDestination by remember { mutableStateOf(AppDestination.SPLASH) }
     var selectedTab by remember { mutableStateOf(0) } // 0: Home, 1: Files, 2: Scan, 3: Tools, 4: Profile
+
+    // Central BackHandler: Handles system hardware/gesture back button safely without closing app
+    BackHandler(
+        enabled = currentDestination != AppDestination.MAIN_TABS || (currentDestination == AppDestination.MAIN_TABS && selectedTab != 0)
+    ) {
+        if (currentDestination != AppDestination.MAIN_TABS) {
+            currentDestination = AppDestination.MAIN_TABS
+        } else if (selectedTab != 0) {
+            selectedTab = 0
+        }
+    }
 
     // File Import Launcher
     val fileImportLauncher = rememberLauncherForActivityResult(
