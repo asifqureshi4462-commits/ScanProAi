@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.graphics.BitmapFactory
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
