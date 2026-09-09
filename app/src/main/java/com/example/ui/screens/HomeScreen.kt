@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -44,6 +45,7 @@ import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -54,6 +56,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,16 +90,27 @@ fun HomeScreen(
     onNavigateToAiChat: () -> Unit,
     onNavigateToDocPreview: (ScannedDocument) -> Unit,
     onNavigateToTools: () -> Unit,
-    onImportFileClicked: () -> Unit
+    onImportFileClicked: () -> Unit,
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val searchQuery by viewModel.searchQuery.collectAsState()
     val documents by viewModel.documents.collectAsState()
     val storageUsed by viewModel.storageUsedBytes.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
+    val syncStatusMessage by viewModel.syncStatusMessage.collectAsState()
+    val isPremium = currentUser?.isPremium == true
 
-    val totalStorage = currentUser?.storageLimitBytes ?: 100_000_000_000L
-    val usedBytes = storageUsed ?: 72_400_000_000L
+    LaunchedEffect(syncStatusMessage) {
+        syncStatusMessage?.let { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            viewModel.clearSyncStatus()
+        }
+    }
+
+    val totalStorage = currentUser?.storageLimitBytes ?: 5_000_000_000L
+    val usedBytes = storageUsed ?: 0L
     val usedGb = (usedBytes.toDouble() / (1024 * 1024 * 1024))
     val totalGb = (totalStorage.toDouble() / (1024 * 1024 * 1024)).toInt()
     val progress = (usedBytes.toFloat() / totalStorage.toFloat()).coerceIn(0.05f, 1.0f)
@@ -167,24 +181,33 @@ fun HomeScreen(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Cloud Sync Button
+                    // Cloud Sync Button — real Firestore sync when configured,
+                    // honest message otherwise (was previously a no-op).
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.primaryContainer)
-                            .clickable { }
+                            .clickable(enabled = !isSyncing) { viewModel.syncNow() }
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Cloud,
-                                contentDescription = "Cloud Sync",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
+                            if (isSyncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Cloud,
+                                    contentDescription = "Cloud Sync",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Sync",
+                                text = if (isSyncing) "Syncing..." else "Sync",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -194,24 +217,28 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // PRO Badge Button
+                    // PRO Badge — reflects the REAL subscription state and
+                    // navigates to the Profile tab to manage/upgrade (was a
+                    // hardcoded label with an empty click handler before).
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(Color(0xFFF59E0B), Color(0xFFEF4444))
-                                )
+                                if (isPremium) {
+                                    Brush.horizontalGradient(colors = listOf(Color(0xFFF59E0B), Color(0xFFEF4444)))
+                                } else {
+                                    Brush.horizontalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant))
+                                }
                             )
-                            .clickable { }
+                            .clickable { onNavigateToProfile() }
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "👑 PRO",
+                                text = if (isPremium) "👑 PRO" else "Upgrade",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
+                                color = if (isPremium) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -223,11 +250,12 @@ fun HomeScreen(
                             .size(36.dp)
                             .clip(CircleShape)
                             .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { onNavigateToProfile() },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = currentUser?.displayName?.take(2)?.uppercase() ?: "JD",
+                            text = currentUser?.displayName?.take(2)?.uppercase() ?: "?",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary

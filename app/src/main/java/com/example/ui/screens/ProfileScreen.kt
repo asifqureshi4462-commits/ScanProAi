@@ -1,5 +1,9 @@
 package com.example.ui.screens
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,11 +49,14 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +69,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -79,18 +87,39 @@ fun ProfileScreen(
     val currentUser by viewModel.currentUser.collectAsState()
     val storageUsed by viewModel.storageUsedBytes.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
+    val appLockEnabled by viewModel.appLockEnabled.collectAsState()
+    val cloudBackupEnabled by viewModel.cloudBackupEnabled.collectAsState()
+    val ocrLanguage by viewModel.ocrLanguage.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
+    val syncStatusMessage by viewModel.syncStatusMessage.collectAsState()
+    val context = LocalContext.current
 
     var showPremiumModal by remember { mutableStateOf(false) }
-    var showSettingsModal by remember { mutableStateOf(false) }
+    var showSecurityModal by remember { mutableStateOf(false) }
+    var showCloudModal by remember { mutableStateOf(false) }
+    var showLanguageModal by remember { mutableStateOf(false) }
     var showAboutModal by remember { mutableStateOf(false) }
+    var showSetPinDialog by remember { mutableStateOf(false) }
 
-    var appLockEnabled by remember { mutableStateOf(false) }
-    var cloudBackupEnabled by remember { mutableStateOf(true) }
+    LaunchedEffect(syncStatusMessage) {
+        syncStatusMessage?.let { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            viewModel.clearSyncStatus()
+        }
+    }
+
+    fun openUrl(url: String) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "No app found to open this link", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     val user = currentUser
-    val usedMb = (storageUsed ?: 125_000_000L) / (1024 * 1024)
+    val usedMb = (storageUsed ?: 0L) / (1024 * 1024)
     val totalGb = (user?.storageLimitBytes ?: 5_000_000_000L) / (1024 * 1024 * 1024)
-    val storageProgress = (storageUsed ?: 125_000_000L).toFloat() / (user?.storageLimitBytes ?: 5_000_000_000L).toFloat()
+    val storageProgress = (storageUsed ?: 0L).toFloat() / (user?.storageLimitBytes ?: 5_000_000_000L).toFloat()
 
     val primaryCyan = MaterialTheme.colorScheme.primary
 
@@ -109,7 +138,13 @@ fun ProfileScreen(
             text = {
                 Column {
                     Text("Unlock Unlimited Scans, 100 GB Cloud Vault & Full Gemini AI Document Assistant.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "⚠️ Demo mode: no payment is actually processed. This app isn't connected to Google Play Billing yet, so tapping Upgrade just unlocks the premium UI locally for testing.",
+                        fontSize = 11.sp,
+                        color = Color(0xFFF59E0B)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -126,12 +161,13 @@ fun ProfileScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.authRepository.upgradeToPremium()
+                        viewModel.upgradeToPremiumDemo()
                         showPremiumModal = false
+                        Toast.makeText(context, "Demo premium unlocked (no real payment was made)", Toast.LENGTH_LONG).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = primaryCyan, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
-                    Text("Upgrade Now", fontWeight = FontWeight.Bold)
+                    Text("Upgrade Now (Demo)", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -142,12 +178,12 @@ fun ProfileScreen(
         )
     }
 
-    // Settings Modal
-    if (showSettingsModal) {
+    // App Lock & Security Modal — real PIN persistence + enforcement
+    if (showSecurityModal) {
         AlertDialog(
-            onDismissRequest = { showSettingsModal = false },
+            onDismissRequest = { showSecurityModal = false },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("App Settings & Security", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            title = { Text("App Lock & Security", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Column {
                     Row(
@@ -155,14 +191,115 @@ fun ProfileScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("App Lock PIN / Biometrics", color = MaterialTheme.colorScheme.onSurface)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("App Lock PIN", color = MaterialTheme.colorScheme.onSurface)
+                            Text(
+                                if (viewModel.hasAppLockPin()) "PIN is set — required on app launch" else "No PIN set yet",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Switch(
                             checked = appLockEnabled,
-                            onCheckedChange = { appLockEnabled = it },
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    if (viewModel.hasAppLockPin()) {
+                                        viewModel.setAppLockEnabled(true)
+                                    } else {
+                                        showSetPinDialog = true
+                                    }
+                                } else {
+                                    viewModel.setAppLockEnabled(false)
+                                }
+                            },
                             colors = SwitchDefaults.colors(checkedThumbColor = primaryCyan)
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    if (viewModel.hasAppLockPin()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        TextButton(onClick = { showSetPinDialog = true }) {
+                            Text("Change PIN", color = primaryCyan)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showSecurityModal = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryCyan, contentColor = MaterialTheme.colorScheme.onPrimary)
+                ) {
+                    Text("Done", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // Set/Change PIN Dialog
+    if (showSetPinDialog) {
+        var newPin by remember { mutableStateOf("") }
+        var confirmPin by remember { mutableStateOf("") }
+        var pinError by remember { mutableStateOf<String?>(null) }
+        AlertDialog(
+            onDismissRequest = { showSetPinDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Set App Lock PIN", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newPin,
+                        onValueChange = { if (it.length <= 6) newPin = it.filter { c -> c.isDigit() } },
+                        label = { Text("New PIN (4-6 digits)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = confirmPin,
+                        onValueChange = { if (it.length <= 6) confirmPin = it.filter { c -> c.isDigit() } },
+                        label = { Text("Confirm PIN") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    pinError?.let {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        when {
+                            newPin.length < 4 -> pinError = "PIN must be at least 4 digits."
+                            newPin != confirmPin -> pinError = "PINs don't match."
+                            else -> {
+                                viewModel.setAppLockPin(newPin)
+                                viewModel.setAppLockEnabled(true)
+                                showSetPinDialog = false
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryCyan, contentColor = MaterialTheme.colorScheme.onPrimary)
+                ) {
+                    Text("Save PIN", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSetPinDialog = false }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        )
+    }
+
+    // Cloud Backup & Sync Modal — real toggle + real Firestore sync trigger
+    if (showCloudModal) {
+        AlertDialog(
+            onDismissRequest = { showCloudModal = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Cloud Backup & Vault Sync", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -171,15 +308,58 @@ fun ProfileScreen(
                         Text("Auto Cloud Backup & Sync", color = MaterialTheme.colorScheme.onSurface)
                         Switch(
                             checked = cloudBackupEnabled,
-                            onCheckedChange = { cloudBackupEnabled = it },
+                            onCheckedChange = { viewModel.setCloudBackupEnabled(it) },
                             colors = SwitchDefaults.colors(checkedThumbColor = primaryCyan)
                         )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Button(
+                        onClick = { viewModel.syncNow() },
+                        enabled = !isSyncing,
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryCyan, contentColor = MaterialTheme.colorScheme.onPrimary),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (isSyncing) "Syncing..." else "Sync Now", fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCloudModal = false }) {
+                    Text("Done", color = primaryCyan, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // OCR & App Language Modal — real picker, persisted and used as the
+    // default language in the OCR tool
+    if (showLanguageModal) {
+        AlertDialog(
+            onDismissRequest = { showLanguageModal = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Default OCR Language", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    listOf("English", "Spanish", "French", "German", "Japanese", "Hindi", "Urdu").forEach { lang ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.setOcrLanguage(lang) }
+                                .padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(lang, color = MaterialTheme.colorScheme.onSurface)
+                            if (ocrLanguage == lang) {
+                                Icon(Icons.Default.Star, contentDescription = null, tint = primaryCyan, modifier = Modifier.size(18.dp))
+                            }
+                        }
                     }
                 }
             },
             confirmButton = {
                 Button(
-                    onClick = { showSettingsModal = false },
+                    onClick = { showLanguageModal = false },
                     colors = ButtonDefaults.buttonColors(containerColor = primaryCyan, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
                     Text("Done", fontWeight = FontWeight.Bold)
@@ -230,7 +410,14 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { }
+                            .clickable {
+                                val pkg = context.packageName
+                                try {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")))
+                                } catch (e: ActivityNotFoundException) {
+                                    openUrl("https://play.google.com/store/apps/details?id=$pkg")
+                                }
+                            }
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -244,7 +431,14 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { }
+                            .clickable {
+                                val pkg = context.packageName
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, "Check out ScanPro AI — an AI document scanner & PDF toolkit: https://play.google.com/store/apps/details?id=$pkg")
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Share ScanPro AI"))
+                            }
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -258,7 +452,17 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { }
+                            .clickable {
+                                val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                                    data = Uri.parse("mailto:support@scanpro.ai")
+                                    putExtra(Intent.EXTRA_SUBJECT, "ScanPro AI Support Request")
+                                }
+                                try {
+                                    context.startActivity(emailIntent)
+                                } catch (e: ActivityNotFoundException) {
+                                    Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -272,7 +476,7 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { }
+                            .clickable { openUrl("https://www.termsfeed.com/live/00000000-0000-0000-0000-000000000000") }
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -327,13 +531,13 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = user?.displayName ?: "Alex Vance",
+                        text = user?.displayName ?: "Guest User",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Text(
-                        text = user?.email ?: "alex.vance@scanpro.ai",
+                        text = user?.email ?: "Not signed in",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -345,9 +549,15 @@ fun ProfileScreen(
                             .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.primaryContainer)
                             .border(1.dp, primaryCyan, RoundedCornerShape(20.dp))
+                            .clickable { if (user?.isPremium != true) showPremiumModal = true }
                             .padding(horizontal = 16.dp, vertical = 6.dp)
                     ) {
-                        Text("PRO MEMBER • UNLIMITED VAULT", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = primaryCyan)
+                        Text(
+                            if (user?.isPremium == true) "PRO MEMBER • UNLIMITED VAULT" else "FREE PLAN • TAP TO UPGRADE",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = primaryCyan
+                        )
                     }
                 }
             }
@@ -494,25 +704,25 @@ fun ProfileScreen(
                 ProfileOptionRow(
                     icon = Icons.Default.Security,
                     title = "App Lock & Security Settings",
-                    subtitle = "PIN lock, biometrics & encryption",
+                    subtitle = if (appLockEnabled) "PIN lock enabled" else "PIN lock, biometrics & encryption",
                     color = MaterialTheme.colorScheme.primary,
-                    onClick = { showSettingsModal = true }
+                    onClick = { showSecurityModal = true }
                 )
 
                 ProfileOptionRow(
                     icon = Icons.Default.CloudSync,
                     title = "Cloud Backup & Vault Sync",
-                    subtitle = "Firebase cloud sync & backup",
+                    subtitle = if (isSyncing) "Syncing..." else "Firebase cloud sync & backup",
                     color = MaterialTheme.colorScheme.secondary,
-                    onClick = { showSettingsModal = true }
+                    onClick = { showCloudModal = true }
                 )
 
                 ProfileOptionRow(
                     icon = Icons.Default.Language,
                     title = "OCR & App Language",
-                    subtitle = "Select default scan languages",
+                    subtitle = "Default: $ocrLanguage",
                     color = MaterialTheme.colorScheme.tertiary,
-                    onClick = { showSettingsModal = true }
+                    onClick = { showLanguageModal = true }
                 )
 
                 ProfileOptionRow(

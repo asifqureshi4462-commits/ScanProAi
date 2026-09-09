@@ -31,10 +31,15 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -43,6 +48,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,8 +62,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.local.ScannedDocument
 import com.example.ui.screens.AiChatScreen
@@ -112,6 +123,22 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
 
     var currentDestination by remember { mutableStateOf(AppDestination.SPLASH) }
     var selectedTab by remember { mutableStateOf(0) } // 0: Home, 1: Files, 2: Scan, 3: Tools, 4: Profile
+
+    // Real App Lock enforcement: re-locks whenever the app is backgrounded,
+    // and requires the user's real PIN (set in Profile) to get back in.
+    val appLockEnabled by viewModel.appLockEnabled.collectAsState()
+    var appLockPassed by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                appLockPassed = false
+            }
+        }
+        ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
+        onDispose {
+            ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)
+        }
+    }
 
     // Central BackHandler: Handles system hardware/gesture back button safely without closing app
     BackHandler(
@@ -310,6 +337,12 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
         }
 
         AppDestination.MAIN_TABS -> {
+            if (appLockEnabled && !appLockPassed) {
+                AppLockScreen(
+                    onUnlock = { pin -> viewModel.verifyAppLockPin(pin) },
+                    onUnlocked = { appLockPassed = true }
+                )
+            } else {
             Scaffold(
                 modifier = Modifier
                     .fillMaxSize()
@@ -338,7 +371,8 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                             onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
                             onNavigateToDocPreview = openDocumentDedicated,
                             onNavigateToTools = { selectedTab = 3 },
-                            onImportFileClicked = { fileImportLauncher.launch("application/*") }
+                            onImportFileClicked = { fileImportLauncher.launch("application/*") },
+                            onNavigateToProfile = { selectedTab = 4 }
                         )
 
                         1 -> FileManagerScreen(
@@ -364,10 +398,12 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                             onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
                             onNavigateToDocPreview = openDocumentDedicated,
                             onNavigateToTools = { selectedTab = 3 },
-                            onImportFileClicked = { fileImportLauncher.launch("application/*") }
+                            onImportFileClicked = { fileImportLauncher.launch("application/*") },
+                            onNavigateToProfile = { selectedTab = 4 }
                         )
                     }
                 }
+            }
             }
         }
     }
@@ -495,6 +531,84 @@ fun BottomNavWithCenterFab(
                     unselectedTextColor = unselectedColor
                 )
             )
+        }
+    }
+}
+
+/**
+ * Real PIN lock gate. Shown whenever App Lock is enabled and the app was
+ * just brought back to the foreground. The PIN is checked against the real
+ * value saved in Profile > App Lock & Security (SharedPreferences) — there
+ * is no bypass and no fixed/accepted code.
+ */
+@Composable
+private fun AppLockScreen(
+    onUnlock: (String) -> Boolean,
+    onUnlocked: () -> Unit
+) {
+    var pin by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Icon(
+                Icons.Default.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(56.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Enter your PIN to unlock ScanPro AI",
+                color = MaterialTheme.colorScheme.onBackground,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            OutlinedTextField(
+                value = pin,
+                onValueChange = {
+                    if (it.length <= 6) {
+                        pin = it.filter { c -> c.isDigit() }
+                        error = false
+                    }
+                },
+                label = { Text("PIN") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                isError = error,
+                modifier = Modifier.fillMaxWidth(0.7f)
+            )
+            if (error) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text("Incorrect PIN, try again.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Button(
+                onClick = {
+                    if (onUnlock(pin)) {
+                        onUnlocked()
+                    } else {
+                        error = true
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier.fillMaxWidth(0.7f)
+            ) {
+                Text("Unlock", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

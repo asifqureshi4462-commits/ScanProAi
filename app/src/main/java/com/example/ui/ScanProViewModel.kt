@@ -78,6 +78,126 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         themeMode.value = mode
     }
 
+    // ---- App Lock (PIN) — real persistence + enforcement ----
+    val appLockEnabled = MutableStateFlow(prefs.getBoolean("app_lock_enabled", false))
+
+    fun hasAppLockPin(): Boolean = !prefs.getString("app_lock_pin", null).isNullOrBlank()
+
+    fun setAppLockPin(pin: String) {
+        prefs.edit().putString("app_lock_pin", pin).apply()
+    }
+
+    fun setAppLockEnabled(enabled: Boolean) {
+        if (enabled && !hasAppLockPin()) return // caller must set a PIN first
+        prefs.edit().putBoolean("app_lock_enabled", enabled).apply()
+        appLockEnabled.value = enabled
+    }
+
+    fun verifyAppLockPin(input: String): Boolean {
+        return input.isNotBlank() && prefs.getString("app_lock_pin", null) == input
+    }
+
+    // ---- Cloud Backup toggle — real persistence ----
+    val cloudBackupEnabled = MutableStateFlow(prefs.getBoolean("cloud_backup_enabled", true))
+
+    fun setCloudBackupEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("cloud_backup_enabled", enabled).apply()
+        cloudBackupEnabled.value = enabled
+    }
+
+    // ---- Default OCR / scan language — real persistence, used by OcrTextToolScreen ----
+    val ocrLanguage = MutableStateFlow(prefs.getString("ocr_language", "English") ?: "English")
+
+    fun setOcrLanguage(lang: String) {
+        prefs.edit().putString("ocr_language", lang).apply()
+        ocrLanguage.value = lang
+    }
+
+    // ---- Cloud Sync — real Firestore upload when configured, honest message otherwise ----
+    val syncStatusMessage = MutableStateFlow<String?>(null)
+    val isSyncing = MutableStateFlow(false)
+
+    fun syncNow() {
+        if (isSyncing.value) return
+        viewModelScope.launch {
+            isSyncing.value = true
+            syncStatusMessage.value = null
+            val firestore = try {
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            } catch (e: Exception) {
+                null
+            }
+            val user = currentUser.value
+            when {
+                firestore == null -> {
+                    isSyncing.value = false
+                    syncStatusMessage.value = "Cloud sync isn't set up yet — this app has no Firebase project connected (missing google-services.json)."
+                }
+                user == null || user.uid.startsWith("guest_") -> {
+                    isSyncing.value = false
+                    syncStatusMessage.value = "Sign in with a real account (not Guest) to enable cloud sync."
+                }
+                else -> {
+                    try {
+                        val docs = documents.value
+                        if (docs.isEmpty()) {
+                            isSyncing.value = false
+                            syncStatusMessage.value = "Nothing to sync yet — scan or import a document first."
+                        } else {
+                            val userDocsRef = firestore.collection("users").document(user.uid).collection("documents")
+                            val tasks = docs.map { doc ->
+                                val data = hashMapOf(
+                                    "title" to doc.title,
+                                    "fileType" to doc.fileType,
+                                    "fileSizeBytes" to doc.fileSizeBytes,
+                                    "updatedAt" to doc.updatedAt,
+                                    "pageCount" to doc.pageCount
+                                )
+                                userDocsRef.document(doc.id.toString()).set(data)
+                            }
+                            com.google.android.gms.tasks.Tasks.whenAll(tasks)
+                                .addOnCompleteListener { result ->
+                                    isSyncing.value = false
+                                    syncStatusMessage.value = if (result.isSuccessful) {
+                                        "Synced ${docs.size} document(s) to the cloud."
+                                    } else {
+                                        "Sync failed: ${result.exception?.message}"
+                                    }
+                                }
+                        }
+                    } catch (e: Exception) {
+                        isSyncing.value = false
+                        syncStatusMessage.value = "Sync failed: ${e.message}"
+                    }
+                }
+            }
+        }
+    }
+
+    fun clearSyncStatus() {
+        syncStatusMessage.value = null
+    }
+
+    // ---- Premium (demo) — persists across restarts; NOT a real payment ----
+    // No real billing backend is wired up (no Google Play Billing integration
+    // and no server-side receipt validation), so this is honestly a local
+    // demo toggle, not a real purchase. It persists so the state survives
+    // app restarts, but should not be treated as a security boundary.
+    fun upgradeToPremiumDemo() {
+        authRepository.upgradeToPremium()
+        prefs.edit().putBoolean("is_premium_demo", true).apply()
+    }
+
+    init {
+        viewModelScope.launch {
+            currentUser.collect { user ->
+                if (user != null && !user.isPremium && prefs.getBoolean("is_premium_demo", false)) {
+                    authRepository.upgradeToPremium()
+                }
+            }
+        }
+    }
+
     // Offline state
     val isOfflineMode = MutableStateFlow(false)
 

@@ -1087,7 +1087,8 @@ fun OcrTextToolScreen(
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     var extractedText by remember { mutableStateOf("") }
-    var ocrLanguage by remember { mutableStateOf("English") }
+    val defaultOcrLanguage by viewModel.ocrLanguage.collectAsState()
+    var ocrLanguage by remember(defaultOcrLanguage) { mutableStateOf(defaultOcrLanguage) }
     var isScanning by remember { mutableStateOf(false) }
     var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val geminiService = remember { com.example.data.ai.GeminiService() }

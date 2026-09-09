@@ -97,6 +97,7 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation("androidx.lifecycle:lifecycle-process:2.8.7") // ProcessLifecycleOwner for real App Lock re-lock on background
   implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
