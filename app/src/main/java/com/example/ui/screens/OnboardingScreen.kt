@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -21,13 +22,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,172 +36,289 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import kotlinx.coroutines.launch
 
-data class OnboardingPage(
-    val icon: ImageVector,
+data class OnboardingData(
     val title: String,
-    val description: String
+    val description: String,
+    val imageRes: Int,
+    val isDarkTheme: Boolean
 )
 
 @Composable
-fun OnboardingScreen(onFinishOnboarding: () -> Unit) {
+fun OnboardingScreen(
+    onFinishOnboarding: () -> Unit,
+    onGoogleSignInClicked: () -> Unit = {}
+) {
     val pages = listOf(
-        OnboardingPage(
-            icon = Icons.Default.DocumentScanner,
-            title = "Smart HD Document Scanner",
-            description = "Capture crystal clear scans with auto edge detection, perspective correction, and multi-mode support."
+        OnboardingData(
+            title = "Smart Document Scanner",
+            description = "Scan any document with your camera in high quality.",
+            imageRes = R.drawable.img_onboarding_scan,
+            isDarkTheme = true
         ),
-        OnboardingPage(
-            icon = Icons.Default.AutoAwesome,
-            title = "AI Document Intelligence",
-            description = "Powered by Gemini AI. Extract text, translate into 50+ languages, and generate instant executive summaries."
+        OnboardingData(
+            title = "AI-Powered Enhancement",
+            description = "Make your documents clear, sharp and readable.",
+            imageRes = R.drawable.img_onboarding_ai,
+            isDarkTheme = false
         ),
-        OnboardingPage(
-            icon = Icons.Default.PictureAsPdf,
-            title = "Complete PDF Utility Suite",
-            description = "Merge, split, compress, watermark, protect, and edit your documents with professional tools."
+        OnboardingData(
+            title = "Everything in One PDF",
+            description = "Convert, organize and share PDFs easily.",
+            imageRes = R.drawable.img_onboarding_pdf,
+            isDarkTheme = true
+        ),
+        OnboardingData(
+            title = "Ready to Get Started?",
+            description = "Start using ScanPro AI and boost your productivity.",
+            imageRes = R.drawable.img_onboarding_ready,
+            isDarkTheme = false
         )
     )
 
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
+    val isLastPage = pagerState.currentPage == pages.size - 1
+    val currentPageData = pages[pagerState.currentPage]
 
-    Column(
+    val backgroundColor = if (currentPageData.isDarkTheme) Color(0xFF061B32) else Color(0xFFFFFFFF)
+    val textColor = if (currentPageData.isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF0F172A)
+    val descColor = if (currentPageData.isDarkTheme) Color(0xFF94A3B8) else Color(0xFF475569)
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(backgroundColor)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Skip Button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            TextButton(onClick = onFinishOnboarding) {
-                Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Pager
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f)
-        ) { pageIndex ->
-            val page = pages[pageIndex]
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxSize()
+            // Top Bar: Back & Skip
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(160.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surface)
-                            )
-                        )
-                        .border(1.5.dp, Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = page.icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(72.dp)
-                    )
+                if (pagerState.currentPage > 0) {
+                    TextButton(onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                        }
+                    }) {
+                        Text("Back", color = textColor, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(48.dp))
                 }
 
-                Spacer(modifier = Modifier.height(48.dp))
-
-                Text(
-                    text = page.title,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 26.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = page.description,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        lineHeight = 24.sp,
-                        fontSize = 15.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
+                if (!isLastPage) {
+                    TextButton(onClick = onFinishOnboarding) {
+                        Text("Skip", color = descColor, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
-        }
 
-        // Indicators & Next Button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(pages.size) { index ->
-                    val isSelected = pagerState.currentPage == index
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Horizontal Pager
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f)
+            ) { pageIndex ->
+                val page = pages[pageIndex]
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp)
+                ) {
+                    // Illustration Image Card / Container
                     Box(
                         modifier = Modifier
-                            .height(8.dp)
-                            .width(if (isSelected) 28.dp else 8.dp)
-                            .clip(CircleShape)
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(24.dp))
                             .background(
-                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                if (page.isDarkTheme) Color(0xFF0A2540) else Color(0xFFF1F5F9)
                             )
+                            .border(
+                                1.dp,
+                                if (page.isDarkTheme) Color(0xFF1E3A8A).copy(alpha = 0.5f) else Color(0xFFE2E8F0),
+                                RoundedCornerShape(24.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = page.imageRes),
+                            contentDescription = page.title,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp)
+                                .clip(RoundedCornerShape(16.dp)),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Text(
+                        text = page.title,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = page.description,
+                        fontSize = 15.sp,
+                        color = descColor,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }
             }
 
-            Button(
-                onClick = {
-                    if (pagerState.currentPage < pages.size - 1) {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Bottom Indicators & Action Buttons
+            if (!isLastPage) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Page Indicator Dots
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        repeat(pages.size) { index ->
+                            val isSelected = pagerState.currentPage == index
+                            Box(
+                                modifier = Modifier
+                                    .height(8.dp)
+                                    .width(if (isSelected) 24.dp else 8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) Color(0xFF00D4E8) else descColor.copy(alpha = 0.4f)
+                                    )
+                            )
                         }
-                    } else {
-                        onFinishOnboarding()
                     }
-                },
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier.height(50.dp)
-            ) {
-                Text(
-                    text = if (pagerState.currentPage == pages.size - 1) "Get Started" else "Next",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+
+                    // Next Button with Gradient Style
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            }
+                        },
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF00D4E8),
+                            contentColor = Color(0xFF061B32)
+                        ),
+                        modifier = Modifier.height(50.dp)
+                    ) {
+                        Text(
+                            text = "Next",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            } else {
+                // Screen 4: Ready to Get Started Actions
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Get Started Button
+                    Button(
+                        onClick = onFinishOnboarding,
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF00D4E8),
+                            contentColor = Color(0xFF061B32)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                    ) {
+                        Text(
+                            text = "Get Started",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "or",
+                        color = descColor,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Continue with Google Button
+                    OutlinedButton(
+                        onClick = onGoogleSignInClicked,
+                        shape = RoundedCornerShape(28.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                    ) {
+                        Text(
+                            text = "Continue with Google",
+                            color = textColor,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Security text
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "🔒 Your data is safe & secure",
+                            color = descColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         }
     }

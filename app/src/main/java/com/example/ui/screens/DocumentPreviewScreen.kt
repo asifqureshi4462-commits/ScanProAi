@@ -145,11 +145,7 @@ fun DocumentPreviewScreen(
                 onClick = {
                     val file = File(doc.filePath)
                     if (file.exists()) {
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "application/pdf"
-                            putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file))
-                        }
-                        context.startActivity(Intent.createChooser(intent, "Share PDF"))
+                        PdfEngine.sharePdf(context, file, doc.title)
                     }
                 }
             ) {
@@ -330,9 +326,26 @@ fun DocumentPreviewScreen(
                             }
                         } else {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Button(
+                                    onClick = {
+                                        viewModel.exportAndShareDocumentWithOcr(doc, com.example.util.OcrPdfMode.HYBRID)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                ) {
+                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Export PDF with OCR", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+
                                 IconButton(
                                     onClick = {
                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

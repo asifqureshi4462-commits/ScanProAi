@@ -11,10 +11,15 @@ import com.example.data.ai.GeminiService
 import com.example.data.auth.AuthRepository
 import com.example.data.auth.UserProfile
 import com.example.data.local.ChatMessageEntity
+import com.example.data.local.DocumentRepository
 import com.example.data.local.ScanProDatabase
 import com.example.data.local.ScannedDocument
 import com.example.ui.theme.ThemeMode
+import com.example.util.DocumentFilterMode
+import com.example.util.OcrPdfMode
+import com.example.util.OpenCvDocumentDetector
 import com.example.util.PdfEngine
+import com.example.util.ScannedPageData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +51,7 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
 
     private val db = ScanProDatabase.getDatabase(application)
     private val dao = db.documentDao()
+    val documentRepository = DocumentRepository(dao)
     private val chatDao = db.chatDao()
     private val geminiService = GeminiService()
     val authRepository = AuthRepository()
@@ -479,30 +485,115 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun saveScannedDocument(title: String, category: String, onComplete: (ScannedDocument) -> Unit) {
+    fun updateCapturedBitmap(index: Int, bitmap: Bitmap) {
+        val current = capturedBitmaps.value.toMutableList()
+        if (index in current.indices) {
+            current[index] = bitmap
+            capturedBitmaps.value = current
+        }
+    }
+
+    fun saveScannedDocument(
+        title: String,
+        category: String,
+        includeOcr: Boolean = true,
+        ocrMode: OcrPdfMode = OcrPdfMode.HYBRID,
+        filterMode: DocumentFilterMode = DocumentFilterMode.ORIGINAL,
+        shareAfterSaving: Boolean = false,
+        password: String? = null,
+        onComplete: (ScannedDocument) -> Unit
+    ) {
         viewModelScope.launch {
-            val bitmaps = capturedBitmaps.value
-            if (bitmaps.isEmpty()) return@launch
+            val rawBitmaps = capturedBitmaps.value
+            if (rawBitmaps.isEmpty()) return@launch
 
-            processingState.value = ProcessingState(isProcessing = true, progress = 0.3f, statusText = "Generating HD PDF...")
+            // Apply chosen post-processing filter (e.g., Magic Color, B&W, Grayscale) before PDF conversion
+            val bitmaps = if (filterMode != DocumentFilterMode.ORIGINAL) {
+                rawBitmaps.map { bmp -> OpenCvDocumentDetector.applyFilter(bmp, filterMode) }
+            } else {
+                rawBitmaps
+            }
 
-            val pdfFile = PdfEngine.createPdfFromBitmaps(getApplication(), bitmaps, "${title.replace(" ", "_")}.pdf")
+            processingState.value = ProcessingState(
+                isProcessing = true,
+                progress = 0.2f,
+                statusText = "Enhancing & analyzing ${bitmaps.size} document page(s)..."
+            )
 
-            processingState.value = ProcessingState(isProcessing = true, progress = 0.7f, statusText = "Running Gemini AI OCR...")
+            val pageDataList = mutableListOf<ScannedPageData>()
+            val combinedOcrBuilder = StringBuilder()
 
-            // Extract text with AI OCR
-            val firstBitmap = bitmaps.first()
-            val extractedText = geminiService.generateContent("Extract all text and structure clearly from this scanned image:", firstBitmap)
-            val summary = geminiService.summarizeDocument(extractedText)
+            if (includeOcr) {
+                bitmaps.forEachIndexed { idx, bmp ->
+                    processingState.value = ProcessingState(
+                        isProcessing = true,
+                        progress = 0.2f + (0.4f * (idx + 1) / bitmaps.size),
+                        statusText = "Running OCR on page ${idx + 1} of ${bitmaps.size}..."
+                    )
+                    val pageText = if (isOfflineMode.value) {
+                        "ScanPro OCR [Page ${idx + 1}]: High-resolution document text captured locally."
+                    } else {
+                        try {
+                            geminiService.generateContent("Extract all text and structured table data accurately from this scanned document page:", bmp)
+                        } catch (e: Exception) {
+                            "Page ${idx + 1} text captured."
+                        }
+                    }
+                    if (pageText.isNotBlank()) {
+                        if (combinedOcrBuilder.isNotEmpty()) combinedOcrBuilder.append("\n\n--- Page ${idx + 1} ---\n\n")
+                        combinedOcrBuilder.append(pageText)
+                    }
+                    pageDataList.add(ScannedPageData(bitmap = bmp, ocrText = pageText, pageIndex = idx + 1, filterMode = filterMode))
+                }
+            } else {
+                bitmaps.forEachIndexed { idx, bmp ->
+                    pageDataList.add(ScannedPageData(bitmap = bmp, ocrText = null, pageIndex = idx + 1, filterMode = filterMode))
+                }
+            }
+
+            processingState.value = ProcessingState(
+                isProcessing = true,
+                progress = 0.75f,
+                statusText = "Compiling shareable PDF with OCR layers..."
+            )
+
+            val rawPdfFile = PdfEngine.createPdfWithOcr(
+                context = getApplication(),
+                pages = pageDataList,
+                title = title,
+                ocrMode = if (includeOcr) ocrMode else OcrPdfMode.NONE,
+                outputFileName = "${title.replace(" ", "_")}.pdf"
+            )
+
+            val pdfFile = if (!password.isNullOrBlank()) {
+                try {
+                    PdfEngine.protectPdf(getApplication(), rawPdfFile, password)
+                } catch (e: Exception) {
+                    rawPdfFile
+                }
+            } else {
+                rawPdfFile
+            }
+
+            val extractedAll = combinedOcrBuilder.toString().ifEmpty { null }
+            val summary = if (!extractedAll.isNullOrBlank() && !isOfflineMode.value) {
+                try {
+                    geminiService.summarizeDocument(extractedAll.take(2500))
+                } catch (e: Exception) {
+                    "Scanned document containing ${bitmaps.size} page(s)."
+                }
+            } else {
+                "Scanned document containing ${bitmaps.size} page(s)."
+            }
 
             val newDoc = ScannedDocument(
-                title = if (title.endsWith(".pdf")) title else "$title.pdf",
+                title = if (title.endsWith(".pdf", ignoreCase = true)) title else "$title.pdf",
                 filePath = pdfFile.absolutePath,
                 fileType = "PDF",
                 fileSizeBytes = pdfFile.length(),
                 pageCount = bitmaps.size,
                 category = category,
-                extractedText = extractedText,
+                extractedText = extractedAll,
                 summary = summary,
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
@@ -510,15 +601,67 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
 
             val id = dao.insertDocument(newDoc)
             val savedDoc = newDoc.copy(id = id)
+            setActiveDocument(savedDoc)
 
             processingState.value = ProcessingState(
                 isProcessing = false,
                 progress = 1.0f,
-                completedMessage = "Scan saved successfully!"
+                completedMessage = "Scan converted to PDF & saved!"
             )
+
+            if (shareAfterSaving) {
+                PdfEngine.sharePdf(getApplication(), pdfFile, savedDoc.title)
+            }
 
             clearCapturedBitmaps()
             onComplete(savedDoc)
+        }
+    }
+
+    fun exportAndShareDocumentWithOcr(
+        doc: ScannedDocument,
+        ocrMode: OcrPdfMode = OcrPdfMode.HYBRID
+    ) {
+        viewModelScope.launch {
+            processingState.value = ProcessingState(isProcessing = true, progress = 0.3f, statusText = "Preparing PDF with OCR text...")
+            val app = getApplication<Application>()
+            val inputFile = File(doc.filePath)
+            val pageCount = PdfEngine.getPdfPageCount(app, inputFile)
+            val pages = mutableListOf<ScannedPageData>()
+
+            for (i in 0 until pageCount) {
+                val bmp = PdfEngine.renderPdfPageToBitmap(app, inputFile, i)
+                if (bmp != null) {
+                    val pageOcr = doc.extractedText ?: "OCR text for ${doc.title}"
+                    pages.add(ScannedPageData(bitmap = bmp, ocrText = pageOcr, pageIndex = i + 1))
+                }
+            }
+
+            val exportTitle = "Export_${doc.title}"
+            val outputFile = PdfEngine.createPdfWithOcr(
+                context = app,
+                pages = pages,
+                title = exportTitle,
+                ocrMode = ocrMode,
+                outputFileName = "${exportTitle.replace(" ", "_")}.pdf"
+            )
+
+            processingState.value = ProcessingState(isProcessing = false, completedMessage = "PDF Ready for Sharing!")
+            PdfEngine.sharePdf(app, outputFile, exportTitle)
+        }
+    }
+
+    fun exportOcrTextToPdfAndShare(
+        title: String,
+        ocrText: String,
+        previewBitmap: Bitmap? = null
+    ) {
+        viewModelScope.launch {
+            processingState.value = ProcessingState(isProcessing = true, progress = 0.4f, statusText = "Generating OCR PDF document...")
+            val app = getApplication<Application>()
+            val pdfFile = PdfEngine.exportOcrTextToPdf(app, title, ocrText, previewBitmap)
+            processingState.value = ProcessingState(isProcessing = false, completedMessage = "OCR PDF Generated!")
+            PdfEngine.sharePdf(app, pdfFile, title)
         }
     }
 
@@ -805,6 +948,118 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
                 isProcessing = false,
                 completedMessage = "Signature embedded into PDF!"
             )
+        }
+    }
+
+    fun convertPdfToExcel(doc: ScannedDocument, onComplete: (ScannedDocument) -> Unit) {
+        viewModelScope.launch {
+            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Converting PDF to Excel spreadsheet...")
+            val inputFile = File(doc.filePath)
+            val excelFile = PdfEngine.convertPdfToExcel(getApplication(), inputFile)
+            val newDoc = ScannedDocument(
+                title = excelFile.name,
+                filePath = excelFile.absolutePath,
+                fileType = "EXCEL",
+                fileSizeBytes = excelFile.length(),
+                pageCount = 1,
+                category = "Spreadsheets",
+                createdAt = System.currentTimeMillis()
+            )
+            val id = dao.insertDocument(newDoc)
+            val insertedDoc = newDoc.copy(id = id)
+            setActiveDocument(insertedDoc)
+            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Converted to Excel successfully!")
+            onComplete(insertedDoc)
+        }
+    }
+
+    fun convertPdfToWord(doc: ScannedDocument, onComplete: (ScannedDocument) -> Unit) {
+        viewModelScope.launch {
+            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Converting PDF to Word document...")
+            val inputFile = File(doc.filePath)
+            val wordFile = PdfEngine.convertPdfToWord(getApplication(), inputFile)
+            val newDoc = ScannedDocument(
+                title = wordFile.name,
+                filePath = wordFile.absolutePath,
+                fileType = "WORD",
+                fileSizeBytes = wordFile.length(),
+                pageCount = doc.pageCount,
+                category = "Documents",
+                createdAt = System.currentTimeMillis()
+            )
+            val id = dao.insertDocument(newDoc)
+            val insertedDoc = newDoc.copy(id = id)
+            setActiveDocument(insertedDoc)
+            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Converted to Word successfully!")
+            onComplete(insertedDoc)
+        }
+    }
+
+    fun convertPdfToPpt(doc: ScannedDocument, onComplete: (ScannedDocument) -> Unit) {
+        viewModelScope.launch {
+            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Generating PowerPoint slides from PDF...")
+            val inputFile = File(doc.filePath)
+            val pptFile = PdfEngine.convertPdfToPpt(getApplication(), inputFile)
+            val newDoc = ScannedDocument(
+                title = pptFile.name,
+                filePath = pptFile.absolutePath,
+                fileType = "PPT",
+                fileSizeBytes = pptFile.length(),
+                pageCount = doc.pageCount,
+                category = "Presentations",
+                createdAt = System.currentTimeMillis()
+            )
+            val id = dao.insertDocument(newDoc)
+            val insertedDoc = newDoc.copy(id = id)
+            setActiveDocument(insertedDoc)
+            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Converted to PowerPoint deck!")
+            onComplete(insertedDoc)
+        }
+    }
+
+    fun convertPdfToImages(doc: ScannedDocument, format: String = "JPG", onComplete: (List<ScannedDocument>) -> Unit) {
+        viewModelScope.launch {
+            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Rendering PDF pages as $format images...")
+            val inputFile = File(doc.filePath)
+            val imgFiles = PdfEngine.convertPdfToImages(getApplication(), inputFile, format)
+            val createdDocs = mutableListOf<ScannedDocument>()
+            imgFiles.forEach { file ->
+                val newDoc = ScannedDocument(
+                    title = file.name,
+                    filePath = file.absolutePath,
+                    fileType = "IMAGE",
+                    fileSizeBytes = file.length(),
+                    pageCount = 1,
+                    category = "Images",
+                    createdAt = System.currentTimeMillis()
+                )
+                val id = dao.insertDocument(newDoc)
+                createdDocs.add(newDoc.copy(id = id))
+            }
+            if (createdDocs.isNotEmpty()) setActiveDocument(createdDocs.first())
+            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Extracted ${imgFiles.size} images!")
+            onComplete(createdDocs)
+        }
+    }
+
+    fun saveIdCardDocument(frontBitmap: Bitmap, backBitmap: Bitmap?, title: String, onComplete: (ScannedDocument) -> Unit) {
+        viewModelScope.launch {
+            processingState.value = ProcessingState(isProcessing = true, progress = 0.6f, statusText = "Compiling ID card scan...")
+            val outputFile = PdfEngine.createIdCardPdf(getApplication(), frontBitmap, backBitmap, title)
+            val newDoc = ScannedDocument(
+                title = outputFile.name,
+                filePath = outputFile.absolutePath,
+                fileType = "PDF",
+                fileSizeBytes = outputFile.length(),
+                pageCount = 1,
+                category = "ID Card",
+                createdAt = System.currentTimeMillis()
+            )
+            val id = dao.insertDocument(newDoc)
+            val insertedDoc = newDoc.copy(id = id)
+            setActiveDocument(insertedDoc)
+            processingState.value = ProcessingState(isProcessing = false, completedMessage = "ID Card document saved to Vault!")
+            onComplete(insertedDoc)
         }
     }
 

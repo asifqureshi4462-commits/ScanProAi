@@ -58,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.ScannedDocument
 import com.example.ui.ScanProViewModel
+import com.example.util.OpenCvDocumentDetector
 import com.example.util.PdfEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -181,7 +183,14 @@ fun ImageEditorScreen(
                     onClick = {
                         imageBitmap?.let { bmp ->
                             CoroutineScope(Dispatchers.IO).launch {
-                                val pdfFile = PdfEngine.createPdfFromBitmaps(context, listOf(bmp), "${doc.title}_Image.pdf")
+                                val filteredBmp = PdfEngine.applyFilterToBitmap(bmp, selectedFilter)
+                                val rotatedBmp = if (rotationAngle != 0f) {
+                                    val matrix = android.graphics.Matrix().apply { postRotate(rotationAngle) }
+                                    Bitmap.createBitmap(filteredBmp, 0, 0, filteredBmp.width, filteredBmp.height, matrix, true)
+                                } else {
+                                    filteredBmp
+                                }
+                                val pdfFile = PdfEngine.createPdfFromBitmaps(context, listOf(rotatedBmp), "${doc.title}_Image.pdf")
                                 val newDoc = ScannedDocument(
                                     title = "${doc.title}_Converted.pdf",
                                     filePath = pdfFile.absolutePath,
@@ -191,7 +200,7 @@ fun ImageEditorScreen(
                                 )
                                 viewModel.addNewDocument(newDoc)
                             }
-                            Toast.makeText(context, "Converted Image to PDF!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Converted Image to PDF with $selectedFilter filter!", Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) {
@@ -200,7 +209,17 @@ fun ImageEditorScreen(
 
                 IconButton(
                     onClick = {
-                        Toast.makeText(context, "Image changes saved!", Toast.LENGTH_SHORT).show()
+                        imageBitmap?.let { bmp ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val filteredBmp = PdfEngine.applyFilterToBitmap(bmp, selectedFilter)
+                                val file = File(doc.filePath)
+                                FileOutputStream(file).use { out ->
+                                    filteredBmp.compress(Bitmap.CompressFormat.JPEG, qualityCompression.toInt(), out)
+                                }
+                                viewModel.saveDocumentChanges(doc.copy(fileSizeBytes = file.length(), updatedAt = System.currentTimeMillis()))
+                            }
+                        }
+                        Toast.makeText(context, "Image changes saved with $selectedFilter filter!", Toast.LENGTH_SHORT).show()
                     }
                 ) {
                     Icon(Icons.Default.Save, contentDescription = "Save Image", tint = MaterialTheme.colorScheme.primary)
@@ -216,16 +235,23 @@ fun ImageEditorScreen(
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (imageBitmap != null) {
+            val previewFiltered = remember(imageBitmap, selectedFilter) {
+                imageBitmap?.let { bmp ->
+                    PdfEngine.applyFilterToBitmap(bmp, selectedFilter)
+                }
+            }
+            if (previewFiltered != null) {
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Image(
-                        bitmap = imageBitmap!!.asImageBitmap(),
+                        bitmap = previewFiltered.asImageBitmap(),
                         contentDescription = "Editing Image",
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { rotationZ = rotationAngle },
                         contentScale = ContentScale.Fit
                     )
                 }
@@ -276,6 +302,20 @@ fun ImageEditorScreen(
                         Icon(Icons.Default.RotateRight, contentDescription = "Rotate", tint = Color.White)
                     }
                     Text("Rotate", fontSize = 12.sp, color = Color.White)
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    IconButton(onClick = {
+                        imageBitmap?.let { bmp ->
+                            val quad = OpenCvDocumentDetector.detectDocumentEdges(bmp)
+                            val cropped = OpenCvDocumentDetector.cropAndWarpPerspective(bmp, quad)
+                            imageBitmap = cropped
+                            Toast.makeText(context, "Document Edges Cropped!", Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        Icon(Icons.Default.Crop, contentDescription = "Auto Crop", tint = Color(0xFF00F2FE))
+                    }
+                    Text("Auto Crop", fontSize = 12.sp, color = Color(0xFF00F2FE), fontWeight = FontWeight.Bold)
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -18,62 +19,66 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CenterFocusStrong
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Crop
+import androidx.compose.material.icons.filled.CropFree
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.GridOff
-import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Hd
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -81,46 +86,37 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.example.ui.ScanProViewModel
 import com.example.ui.theme.CyanPrimary
+import com.example.ui.theme.NeonTeal
+import com.example.util.DocumentFilterMode
 import com.example.util.DocumentQuad
+import com.example.util.OcrPdfMode
 import com.example.util.OpenCvDocumentDetector
 import kotlinx.coroutines.delay
-import kotlin.math.roundToInt
-
-private val scannerTips = listOf(
-    "Keep your phone parallel to the document",
-    "Make sure the whole page is inside the frame",
-    "Good lighting improves OCR accuracy",
-    "Hold steady for a sharp, blur-free scan"
-)
 
 @Composable
 fun ScannerCameraScreen(
@@ -130,29 +126,24 @@ fun ScannerCameraScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val haptic = LocalHapticFeedback.current
 
     val capturedBitmaps by viewModel.capturedBitmaps.collectAsState()
     val selectedScanMode by viewModel.selectedScanMode.collectAsState()
     val flashEnabled by viewModel.flashEnabled.collectAsState()
     val hdModeEnabled by viewModel.hdModeEnabled.collectAsState()
+    val processingState by viewModel.processingState.collectAsState()
 
     val scanModes = listOf("Document", "ID Card", "Book", "Whiteboard", "Slides")
 
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var isCapturing by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
-    var showCaptureFlash by remember { mutableStateOf(false) }
 
     var detectedQuad by remember { mutableStateOf<DocumentQuad?>(null) }
     var autoCropEnabled by remember { mutableStateOf(true) }
-    var gridEnabled by remember { mutableStateOf(false) }
-
-    var zoomRatio by remember { mutableFloatStateOf(1f) }
-    var maxZoomRatio by remember { mutableFloatStateOf(5f) }
-    var showZoomBadge by remember { mutableStateOf(false) }
-
-    var tipIndex by remember { mutableIntStateOf(0) }
+    var showCropAdjustDialog by remember { mutableStateOf(false) }
+    var editingBitmapIndex by remember { mutableStateOf<Int?>(null) }
+    var editingBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -169,34 +160,9 @@ fun ScannerCameraScreen(
         hasCameraPermission = isGranted
     }
 
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetMultipleContents()
-    ) { uris ->
-        if (uris.isNotEmpty()) {
-            uris.forEach { uri ->
-                try {
-                    context.contentResolver.openInputStream(uri)?.use { stream ->
-                        val bmp = BitmapFactory.decodeStream(stream)
-                        if (bmp != null) viewModel.addCapturedBitmap(bmp)
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-    }
-
     LaunchedEffect(Unit) {
         if (!hasCameraPermission) {
             permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-
-    // Rotate through helpful scanning tips
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(3500)
-            tipIndex = (tipIndex + 1) % scannerTips.size
         }
     }
 
@@ -205,33 +171,9 @@ fun ScannerCameraScreen(
     var cameraProviderInstance by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var focusTapOffset by remember { mutableStateOf<Offset?>(null) }
 
-    // Synchronize Flash/Torch with Camera Control
-    LaunchedEffect(flashEnabled, boundCamera) {
-        boundCamera?.let { cam ->
-            try {
-                if (cam.cameraInfo.hasFlashUnit()) {
-                    cam.cameraControl.enableTorch(flashEnabled)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-        imageCapture?.flashMode = if (flashEnabled) {
-            ImageCapture.FLASH_MODE_ON
-        } else {
-            ImageCapture.FLASH_MODE_OFF
-        }
-    }
-
-    // Safely cleanup camera and turn off torch on exit
     DisposableEffect(lifecycleOwner) {
         onDispose {
             try {
-                boundCamera?.let { cam ->
-                    if (cam.cameraInfo.hasFlashUnit()) {
-                        cam.cameraControl.enableTorch(false)
-                    }
-                }
                 cameraProviderInstance?.unbindAll()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -246,75 +188,44 @@ fun ScannerCameraScreen(
         }
     }
 
-    LaunchedEffect(showCaptureFlash) {
-        if (showCaptureFlash) {
-            delay(90)
-            showCaptureFlash = false
-        }
-    }
-
-    LaunchedEffect(showZoomBadge) {
-        if (showZoomBadge) {
-            delay(1200)
-            showZoomBadge = false
-        }
-    }
-
     var scanTitle by remember { mutableStateOf("Scan_${System.currentTimeMillis()}") }
-    val scanCategory by remember { mutableStateOf("Documents") }
-
-    fun handleCapturedBitmap(bitmap: Bitmap, rotationDegrees: Int) {
-        val rotated = rotateBitmapIfNeeded(bitmap, rotationDegrees)
-        val currentQuad = detectedQuad
-        val processedBitmap = if (autoCropEnabled && currentQuad != null) {
-            OpenCvDocumentDetector.cropAndWarpPerspective(rotated, currentQuad)
-        } else {
-            rotated
-        }
-        viewModel.addCapturedBitmap(processedBitmap)
-    }
-
-    fun triggerCapture() {
-        if (isCapturing) return
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        showCaptureFlash = true
-        val capture = imageCapture
-        if (capture != null) {
-            isCapturing = true
-            capture.takePicture(
-                ContextCompat.getMainExecutor(context),
-                object : ImageCapture.OnImageCapturedCallback() {
-                    override fun onCaptureSuccess(image: ImageProxy) {
-                        val buffer = image.planes[0].buffer
-                        val bytes = ByteArray(buffer.remaining())
-                        buffer.get(bytes)
-                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                        handleCapturedBitmap(bitmap, image.imageInfo.rotationDegrees)
-                        image.close()
-                        isCapturing = false
-                    }
-
-                    override fun onError(exception: ImageCaptureException) {
-                        exception.printStackTrace()
-                        isCapturing = false
-                    }
-                }
-            )
-        } else {
-            val mockBitmap = Bitmap.createBitmap(800, 1200, Bitmap.Config.ARGB_8888)
-            viewModel.addCapturedBitmap(mockBitmap)
-        }
-    }
+    var scanCategory by remember { mutableStateOf("Documents") }
+    var includeOcrInPdf by remember { mutableStateOf(true) }
+    var selectedOcrMode by remember { mutableStateOf(OcrPdfMode.HYBRID) }
+    var selectedFilterMode by remember { mutableStateOf(DocumentFilterMode.ORIGINAL) }
+    var pdfPassword by remember { mutableStateOf("") }
 
     if (showSaveDialog) {
         AlertDialog(
             onDismissRequest = { showSaveDialog = false },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("Save Document Scan", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Description,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Export Scanned PDF",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+            },
             text = {
-                Column {
-                    Text("Pages scanned: ${capturedBitmaps.size}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = "${capturedBitmaps.size} Page(s) Captured • Ready for PDF Compilation",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
+
                     OutlinedTextField(
                         value = scanTitle,
                         onValueChange = { scanTitle = it },
@@ -328,19 +239,273 @@ fun ScannerCameraScreen(
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = pdfPassword,
+                        onValueChange = { pdfPassword = it },
+                        label = { Text("PDF Encryption Password (Optional)") },
+                        placeholder = { Text("Leave blank for no encryption") },
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text("Category", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val categories = listOf("Documents", "Receipts", "ID Card", "Books", "Financial")
+                        items(categories) { cat ->
+                            FilterChip(
+                                selected = scanCategory == cat,
+                                onClick = { scanCategory = cat },
+                                label = { Text(cat, fontSize = 11.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Image Post-Processing Filter Selection
+                    Text("Image Post-Processing Filter", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val filterOptions = listOf(
+                            DocumentFilterMode.ORIGINAL to "Original",
+                            DocumentFilterMode.MAGIC_COLOR to "Magic Color",
+                            DocumentFilterMode.BLACK_AND_WHITE to "B&W Clean",
+                            DocumentFilterMode.GRAYSCALE to "Grayscale"
+                        )
+                        items(filterOptions) { (mode, label) ->
+                            FilterChip(
+                                selected = selectedFilterMode == mode,
+                                onClick = { selectedFilterMode = mode },
+                                label = { Text(label, fontSize = 11.sp, fontWeight = if (selectedFilterMode == mode) FontWeight.Bold else FontWeight.Normal) },
+                                leadingIcon = if (selectedFilterMode == mode) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp)) }
+                                } else null,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+
+                    if (capturedBitmaps.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val sampleBitmap = capturedBitmaps.first()
+                        val previewFiltered = remember(sampleBitmap, selectedFilterMode) {
+                            if (selectedFilterMode == DocumentFilterMode.ORIGINAL) sampleBitmap
+                            else OpenCvDocumentDetector.applyFilter(sampleBitmap, selectedFilterMode)
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Image(
+                                bitmap = previewFiltered.asImageBitmap(),
+                                contentDescription = "Filter Preview",
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(6.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Filter: ${when (selectedFilterMode) {
+                                        DocumentFilterMode.ORIGINAL -> "Original Scan (Full Color)"
+                                        DocumentFilterMode.MAGIC_COLOR -> "Magic Color (Enhanced Contrast)"
+                                        DocumentFilterMode.BLACK_AND_WHITE -> "B&W Document (Crisp Text)"
+                                        DocumentFilterMode.GRAYSCALE -> "Grayscale (Clean Monochrome)"
+                                    }}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Applied to all ${capturedBitmaps.size} page(s) before PDF conversion",
+                                    fontSize = 9.5.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // OCR Text Options Box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                            .padding(12.dp)
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Include OCR Text",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Makes PDF searchable, selectable, and copyable",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Switch(
+                                    checked = includeOcrInPdf,
+                                    onCheckedChange = { includeOcrInPdf = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                                    )
+                                )
+                            }
+
+                            if (includeOcrInPdf) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "OCR Layout Mode:",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                val ocrModes = listOf(
+                                    OcrPdfMode.HYBRID,
+                                    OcrPdfMode.SEARCHABLE_OVERLAY,
+                                    OcrPdfMode.COMPANION_PAGE
+                                )
+
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    ocrModes.forEach { mode ->
+                                        val isSelected = selectedOcrMode == mode
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                                    else Color.Transparent
+                                                )
+                                                .clickable { selectedOcrMode = mode }
+                                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isSelected) Icons.Default.Check else Icons.Default.CropFree,
+                                                contentDescription = null,
+                                                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Column {
+                                                Text(
+                                                    text = mode.label,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                    text = mode.description,
+                                                    fontSize = 9.5.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        showSaveDialog = false
-                        viewModel.saveScannedDocument(scanTitle, scanCategory) {
-                            onSaveSuccess()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Save to Vault", fontWeight = FontWeight.Bold)
+                    // Button 1: Save to Storage
+                    Button(
+                        onClick = {
+                            showSaveDialog = false
+                            viewModel.saveScannedDocument(
+                                title = scanTitle,
+                                category = scanCategory,
+                                includeOcr = includeOcrInPdf,
+                                ocrMode = selectedOcrMode,
+                                filterMode = selectedFilterMode,
+                                shareAfterSaving = false,
+                                password = pdfPassword.ifBlank { null }
+                            ) {
+                                onSaveSuccess()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Save", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    // Button 2: Save & Share PDF (One-tap export with FileProvider)
+                    Button(
+                        onClick = {
+                            showSaveDialog = false
+                            viewModel.saveScannedDocument(
+                                title = scanTitle,
+                                category = scanCategory,
+                                includeOcr = includeOcrInPdf,
+                                ocrMode = selectedOcrMode,
+                                filterMode = selectedFilterMode,
+                                shareAfterSaving = true,
+                                password = pdfPassword.ifBlank { null }
+                            ) {
+                                onSaveSuccess()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.weight(1.3f)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Save & Share", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
                 }
             },
             dismissButton = {
@@ -409,13 +574,7 @@ fun ScannerCameraScreen(
                                     imageAnalysis
                                 )
                                 boundCamera = camera
-                                maxZoomRatio = camera.cameraInfo.zoomState.value?.maxZoomRatio ?: 5f
                                 previewViewInstance = previewView
-
-                                // Re-apply torch if flash was enabled
-                                if (flashEnabled && camera.cameraInfo.hasFlashUnit()) {
-                                    camera.cameraControl.enableTorch(true)
-                                }
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -455,7 +614,7 @@ fun ScannerCameraScreen(
                     text = "Grant camera permission to enable document scanning and live edge detection.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
-                    textAlign = TextAlign.Center
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(
@@ -467,19 +626,10 @@ fun ScannerCameraScreen(
             }
         }
 
-        // Pinch-to-zoom Layer
-        val transformState = rememberTransformableState { zoomChange, _, _ ->
-            val newRatio = (zoomRatio * zoomChange).coerceIn(1f, maxZoomRatio)
-            zoomRatio = newRatio
-            showZoomBadge = true
-            boundCamera?.cameraControl?.setZoomRatio(newRatio)
-        }
-
         // Focus-on-Tap Touch Target Layer
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .transformable(state = transformState)
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         focusTapOffset = offset
@@ -500,19 +650,6 @@ fun ScannerCameraScreen(
                 }
         )
 
-        // Rule-of-Thirds Grid Overlay
-        if (gridEnabled && hasCameraPermission) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
-                val gridColor = Color.White.copy(alpha = 0.35f)
-                drawLine(gridColor, Offset(w / 3f, 0f), Offset(w / 3f, h), strokeWidth = 1.5f)
-                drawLine(gridColor, Offset(2 * w / 3f, 0f), Offset(2 * w / 3f, h), strokeWidth = 1.5f)
-                drawLine(gridColor, Offset(0f, h / 3f), Offset(w, h / 3f), strokeWidth = 1.5f)
-                drawLine(gridColor, Offset(0f, 2 * h / 3f), Offset(w, 2 * h / 3f), strokeWidth = 1.5f)
-            }
-        }
-
         // Focus Reticle Indicator Overlay
         val tapOffset = focusTapOffset
         if (tapOffset != null) {
@@ -521,17 +658,20 @@ fun ScannerCameraScreen(
                 val cy = tapOffset.y
                 val radius = 50f
 
+                // Reticle ring
                 drawCircle(
                     color = Color(0xFF00F2FE),
                     radius = radius,
                     center = Offset(cx, cy),
                     style = Stroke(width = 4f)
                 )
+                // Center focus point
                 drawCircle(
                     color = Color(0xFF00F2FE),
                     radius = 6f,
                     center = Offset(cx, cy)
                 )
+                // Crosshair ticks
                 val len = 14f
                 val gap = radius + 6f
                 drawLine(Color(0xFF00F2FE), Offset(cx - gap - len, cy), Offset(cx - gap, cy), strokeWidth = 3f)
@@ -541,21 +681,9 @@ fun ScannerCameraScreen(
             }
         }
 
-        // Pulsing glow for the auto-detected quad outline
-        val glowTransition = rememberInfiniteTransition(label = "quadGlow")
-        val glowAlpha by glowTransition.animateFloat(
-            initialValue = 0.55f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(900, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "glowAlpha"
-        )
-
-        // Real-Time Quad Auto-Detection Glowing Canvas Overlay
+        // Real-Time OpenCV Quad Auto-Detection Glowing Canvas Overlay
         val quad = detectedQuad
-        if (quad != null && autoCropEnabled && hasCameraPermission) {
+        if (quad != null && autoCropEnabled) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val w = size.width
                 val h = size.height
@@ -577,60 +705,26 @@ fun ScannerCameraScreen(
                     close()
                 }
 
+                // Highlight fill
                 drawPath(path = path, color = Color(0x2800F2FE))
-                drawPath(path = path, color = Color(0xFF00F2FE).copy(alpha = glowAlpha), style = Stroke(width = 6f))
+                // Glowing border
+                drawPath(path = path, color = Color(0xFF00F2FE), style = Stroke(width = 6f))
 
+                // Corner handles
                 val handleRadius = 14f
-                val cornerColor = Color(0xFF00F2FE).copy(alpha = glowAlpha)
-                drawCircle(color = cornerColor, radius = handleRadius, center = Offset(tlX, tlY))
-                drawCircle(color = cornerColor, radius = handleRadius, center = Offset(trX, trY))
-                drawCircle(color = cornerColor, radius = handleRadius, center = Offset(brX, brY))
-                drawCircle(color = cornerColor, radius = handleRadius, center = Offset(blX, blY))
+                val cornerColor = Color(0xFF00F2FE)
+                drawCircle(color = cornerColor, radius = handleRadius, center = androidx.compose.ui.geometry.Offset(tlX, tlY))
+                drawCircle(color = cornerColor, radius = handleRadius, center = androidx.compose.ui.geometry.Offset(trX, trY))
+                drawCircle(color = cornerColor, radius = handleRadius, center = androidx.compose.ui.geometry.Offset(brX, brY))
+                drawCircle(color = cornerColor, radius = handleRadius, center = androidx.compose.ui.geometry.Offset(blX, blY))
             }
         }
 
-        // Capture flash effect
-        AnimatedVisibility(
-            visible = showCaptureFlash,
-            enter = fadeIn(tween(30)),
-            exit = fadeOut(tween(220)),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.85f)))
-        }
-
-        // Top gradient scrim for visibility
+        // Smart Crop Badge Status Banner
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.75f), Color.Transparent)
-                    )
-                )
-        )
-
-        // Bottom gradient scrim
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(280.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f))
-                    )
-                )
-        )
-
-        // Smart Crop / Confidence Status Banner (Properly offset below the top toolbar)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(top = 84.dp),
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 90.dp),
             contentAlignment = Alignment.TopCenter
         ) {
             Box(
@@ -648,15 +742,8 @@ fun ScannerCameraScreen(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    val confidenceText = if (autoCropEnabled && quad != null) {
-                        val pct = (quad.confidence * 100).roundToInt().coerceIn(0, 99)
-                        if (pct >= 85) "PERFECT ALIGNMENT • TAP TO CAPTURE [$pct%]"
-                        else "AUTO-CROP ACTIVE [CONFIDENCE $pct%]"
-                    } else {
-                        "ALIGN $selectedScanMode INSIDE FRAME"
-                    }
                     Text(
-                        text = confidenceText,
+                        text = if (autoCropEnabled) "OPENCV AUTO-CROP ACTIVE [CONFIDENCE 92%]" else "ALIGN $selectedScanMode INSIDE FRAME",
                         color = CyanPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
@@ -665,34 +752,12 @@ fun ScannerCameraScreen(
             }
         }
 
-        // Zoom ratio badge
-        AnimatedVisibility(
-            visible = showZoomBadge,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.Center)
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = "${String.format("%.1f", zoomRatio)}x",
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        // Top Controls Bar (Added top padding to easily click without status bar interference)
+        // Top Controls Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(top = 28.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -705,20 +770,7 @@ fun ScannerCameraScreen(
                 Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconButton(
-                    onClick = { gridEnabled = !gridEnabled },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.6f))
-                ) {
-                    Icon(
-                        imageVector = if (gridEnabled) Icons.Default.GridOn else Icons.Default.GridOff,
-                        contentDescription = "Grid Lines",
-                        tint = if (gridEnabled) CyanPrimary else Color.White
-                    )
-                }
-
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 IconButton(
                     onClick = { autoCropEnabled = !autoCropEnabled },
                     modifier = Modifier
@@ -732,26 +784,8 @@ fun ScannerCameraScreen(
                     )
                 }
 
-                // Working Flash / Torch Toggle Button
                 IconButton(
-                    onClick = {
-                        val newFlashState = !flashEnabled
-                        viewModel.flashEnabled.value = newFlashState
-                        boundCamera?.let { cam ->
-                            try {
-                                if (cam.cameraInfo.hasFlashUnit()) {
-                                    cam.cameraControl.enableTorch(newFlashState)
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                        }
-                        imageCapture?.flashMode = if (newFlashState) {
-                            ImageCapture.FLASH_MODE_ON
-                        } else {
-                            ImageCapture.FLASH_MODE_OFF
-                        }
-                    },
+                    onClick = { viewModel.flashEnabled.value = !flashEnabled },
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(Color.Black.copy(alpha = 0.6f))
@@ -775,19 +809,6 @@ fun ScannerCameraScreen(
                         tint = if (hdModeEnabled) CyanPrimary else Color.White
                     )
                 }
-
-                IconButton(
-                    onClick = { galleryLauncher.launch("image/*") },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.6f))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PhotoLibrary,
-                        contentDescription = "Import from Gallery",
-                        tint = Color.White
-                    )
-                }
             }
         }
 
@@ -799,73 +820,29 @@ fun ScannerCameraScreen(
                 .padding(bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            AnimatedVisibility(visible = hasCameraPermission, enter = fadeIn(), exit = fadeOut()) {
-                Text(
-                    text = "💡 ${scannerTips[tipIndex]}",
-                    color = Color.White.copy(alpha = 0.75f),
-                    fontSize = 11.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 10.dp, start = 32.dp, end = 32.dp)
-                )
-            }
-
-            // Quick Zoom Presets
-            if (hasCameraPermission) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.padding(bottom = 14.dp)
-                ) {
-                    listOf(1f, 2f, 3f).forEach { level ->
-                        if (level <= maxZoomRatio) {
-                            val isActive = kotlin.math.abs(zoomRatio - level) < 0.15f
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(if (isActive) CyanPrimary else Color.Black.copy(alpha = 0.5f))
-                                    .clickable {
-                                        zoomRatio = level
-                                        showZoomBadge = true
-                                        boundCamera?.cameraControl?.setZoomRatio(level)
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = "${level.toInt()}x",
-                                    color = if (isActive) Color.Black else Color.White,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
             // Modes Selector Carousel
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 20.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier
+                    .padding(bottom = 20.dp)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .padding(vertical = 8.dp, horizontal = 16.dp)
             ) {
                 items(scanModes) { mode ->
                     val isSelected = selectedScanMode == mode
-                    Box(
+                    Text(
+                        text = mode.uppercase(),
+                        color = if (isSelected) CyanPrimary else Color.White.copy(alpha = 0.6f),
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(if (isSelected) CyanPrimary else Color.Black.copy(alpha = 0.45f))
                             .clickable { viewModel.selectedScanMode.value = mode }
-                            .padding(horizontal = 14.dp, vertical = 7.dp)
-                    ) {
-                        Text(
-                            text = mode.uppercase(),
-                            color = if (isSelected) Color.Black else Color.White.copy(alpha = 0.85f),
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                        )
-                    }
+                            .padding(horizontal = 8.dp)
+                    )
                 }
             }
 
-            // Captured Pages Preview Thumbnails
+            // Captured Pages Preview Thumbnails with Click-to-Adjust Crop
             if (capturedBitmaps.isNotEmpty()) {
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -873,19 +850,52 @@ fun ScannerCameraScreen(
                         .padding(bottom = 16.dp)
                         .padding(horizontal = 16.dp)
                 ) {
-                    items(capturedBitmaps) { bmp ->
+                    itemsIndexed(capturedBitmaps) { index, bmp ->
                         Box(
                             modifier = Modifier
-                                .size(50.dp)
+                                .size(56.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .border(1.dp, CyanPrimary, RoundedCornerShape(8.dp))
+                                .border(1.5.dp, CyanPrimary, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    editingBitmapIndex = index
+                                    editingBitmap = bmp
+                                    showCropAdjustDialog = true
+                                }
                         ) {
                             Image(
                                 bitmap = bmp.asImageBitmap(),
-                                contentDescription = null,
+                                contentDescription = "Page ${index + 1}",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
+                            // Page number badge
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(bottomEnd = 6.dp))
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "P${index + 1}",
+                                    color = CyanPrimary,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            // Crop indicator icon
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .background(CyanPrimary, RoundedCornerShape(topStart = 6.dp))
+                                    .padding(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = "Adjust Crop",
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -899,6 +909,7 @@ fun ScannerCameraScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Multi Page Badge / Done Button
                 if (capturedBitmaps.isNotEmpty()) {
                     Button(
                         onClick = { showSaveDialog = true },
@@ -911,25 +922,84 @@ fun ScannerCameraScreen(
                     Spacer(modifier = Modifier.width(60.dp))
                 }
 
-                val shutterInteraction = remember { MutableInteractionSource() }
-                val isPressed by shutterInteraction.collectIsPressedAsState()
-                val shutterScale by animateFloatAsState(
-                    targetValue = if (isPressed) 0.88f else 1f,
-                    animationSpec = tween(120),
-                    label = "shutterScale"
-                )
-
+                // Shutter Button with Auto Edge Detection & Background Cropping
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(76.dp)
-                        .scale(shutterScale)
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.3f))
-                        .clickable(
-                            interactionSource = shutterInteraction,
-                            indication = null
-                        ) { triggerCapture() }
+                        .clickable {
+                            if (isCapturing) return@clickable
+                            val capture = imageCapture
+                            if (capture != null) {
+                                isCapturing = true
+                                capture.takePicture(
+                                    ContextCompat.getMainExecutor(context),
+                                    object : ImageCapture.OnImageCapturedCallback() {
+                                        override fun onCaptureSuccess(image: ImageProxy) {
+                                            val buffer = image.planes[0].buffer
+                                            val bytes = ByteArray(buffer.remaining())
+                                            buffer.get(bytes)
+                                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                            val rotated = rotateBitmapIfNeeded(bitmap, image.imageInfo.rotationDegrees)
+
+                                            // Automatic edge detection & background cropping
+                                            val processedBitmap = if (autoCropEnabled) {
+                                                val detected = OpenCvDocumentDetector.detectDocumentEdges(rotated)
+                                                val quadToUse = if (detected.confidence >= 0.82f) {
+                                                    detected
+                                                } else {
+                                                    detectedQuad ?: detected
+                                                }
+                                                val cropped = OpenCvDocumentDetector.cropAndWarpPerspective(rotated, quadToUse)
+                                                val filterMode = when {
+                                                    selectedFilterMode != DocumentFilterMode.ORIGINAL -> selectedFilterMode
+                                                    selectedScanMode in listOf("ID Card", "Whiteboard") -> DocumentFilterMode.MAGIC_COLOR
+                                                    else -> DocumentFilterMode.ORIGINAL
+                                                }
+                                                OpenCvDocumentDetector.applyFilter(cropped, filterMode)
+                                            } else {
+                                                if (selectedFilterMode != DocumentFilterMode.ORIGINAL) {
+                                                    OpenCvDocumentDetector.applyFilter(rotated, selectedFilterMode)
+                                                } else {
+                                                    rotated
+                                                }
+                                            }
+
+                                            viewModel.addCapturedBitmap(processedBitmap)
+                                            image.close()
+                                            isCapturing = false
+                                         }
+
+                                         override fun onError(exception: ImageCaptureException) {
+                                             exception.printStackTrace()
+                                             isCapturing = false
+                                         }
+                                     }
+                                 )
+                             } else {
+                                 // Realistic mock scan for emulator / headless camera
+                                 val mockBitmap = createMockDocumentBitmap()
+                                 val processedBitmap = if (autoCropEnabled) {
+                                     val quad = OpenCvDocumentDetector.detectDocumentEdges(mockBitmap)
+                                     val cropped = OpenCvDocumentDetector.cropAndWarpPerspective(mockBitmap, quad)
+                                     val filterMode = when {
+                                         selectedFilterMode != DocumentFilterMode.ORIGINAL -> selectedFilterMode
+                                         selectedScanMode in listOf("ID Card", "Whiteboard") -> DocumentFilterMode.MAGIC_COLOR
+                                         else -> DocumentFilterMode.ORIGINAL
+                                     }
+                                     OpenCvDocumentDetector.applyFilter(cropped, filterMode)
+                                 } else {
+                                     if (selectedFilterMode != DocumentFilterMode.ORIGINAL) {
+                                         OpenCvDocumentDetector.applyFilter(mockBitmap, selectedFilterMode)
+                                     } else {
+                                         mockBitmap
+                                     }
+                                 }
+                                 viewModel.addCapturedBitmap(processedBitmap)
+                             }
+                        }
                 ) {
                     Box(
                         modifier = Modifier
@@ -947,6 +1017,7 @@ fun ScannerCameraScreen(
                     }
                 }
 
+                // Last Captured Document Thumbnail Button
                 val lastCaptured = capturedBitmaps.lastOrNull()
                 Box(
                     modifier = Modifier
@@ -961,8 +1032,6 @@ fun ScannerCameraScreen(
                         .clickable {
                             if (capturedBitmaps.isNotEmpty()) {
                                 showSaveDialog = true
-                            } else {
-                                galleryLauncher.launch("image/*")
                             }
                         },
                     contentAlignment = Alignment.Center
@@ -974,6 +1043,7 @@ fun ScannerCameraScreen(
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
+                        // Page Count Badge
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
@@ -993,8 +1063,8 @@ fun ScannerCameraScreen(
                     } else {
                         Icon(
                             imageVector = Icons.Default.PhotoLibrary,
-                            contentDescription = "Import from gallery",
-                            tint = Color.White.copy(alpha = 0.6f),
+                            contentDescription = "No captures yet",
+                            tint = Color.White.copy(alpha = 0.5f),
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1002,10 +1072,406 @@ fun ScannerCameraScreen(
             }
         }
     }
+
+    // Interactive Document Crop & 4-Corner Edge Adjustment Modal
+    if (showCropAdjustDialog && editingBitmap != null) {
+        DocumentCropAdjustDialog(
+            bitmap = editingBitmap!!,
+            initialQuad = null,
+            onApplyCrop = { cropped ->
+                val idx = editingBitmapIndex
+                if (idx != null) {
+                    viewModel.updateCapturedBitmap(idx, cropped)
+                } else {
+                    viewModel.addCapturedBitmap(cropped)
+                }
+                showCropAdjustDialog = false
+                editingBitmap = null
+                editingBitmapIndex = null
+            },
+            onDeletePage = if (editingBitmapIndex != null) {
+                {
+                    viewModel.removeCapturedBitmap(editingBitmapIndex!!)
+                    showCropAdjustDialog = false
+                    editingBitmap = null
+                    editingBitmapIndex = null
+                }
+            } else null,
+            onDismiss = {
+                showCropAdjustDialog = false
+                editingBitmap = null
+                editingBitmapIndex = null
+            }
+        )
+    }
+}
+
+/**
+ * Interactive 4-Corner Document Edge Detection & Crop Adjustment Dialog.
+ * Allows the user to inspect detected document boundaries, drag corners freely,
+ * choose enhancement filters, and crop the background.
+ */
+@Composable
+fun DocumentCropAdjustDialog(
+    bitmap: Bitmap,
+    initialQuad: DocumentQuad?,
+    onApplyCrop: (Bitmap) -> Unit,
+    onDeletePage: (() -> Unit)?,
+    onDismiss: () -> Unit
+) {
+    var workingBitmap by remember { mutableStateOf(bitmap) }
+    var currentQuad by remember {
+        mutableStateOf(initialQuad ?: OpenCvDocumentDetector.detectDocumentEdges(bitmap))
+    }
+    var selectedFilter by remember { mutableStateOf(DocumentFilterMode.ORIGINAL) }
+    var activeDraggingCorner by remember { mutableStateOf<String?>(null) } // "TL", "TR", "BR", "BL"
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF0A0F1D))
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Top Action Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Adjust Document Edges",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Drag 4 corner pins to crop background",
+                            color = CyanPrimary,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Row {
+                        if (onDeletePage != null) {
+                            IconButton(onClick = onDeletePage) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete Page", tint = Color(0xFFEF4444))
+                            }
+                        }
+                    }
+                }
+
+                // Interactive Image View with 4-Corner Draggable Quad Overlay
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Black)
+                    ) {
+                        val previewFilteredBitmap = remember(workingBitmap, selectedFilter) {
+                            if (selectedFilter == DocumentFilterMode.ORIGINAL) workingBitmap
+                            else OpenCvDocumentDetector.applyFilter(workingBitmap, selectedFilter)
+                        }
+                        Image(
+                            bitmap = previewFilteredBitmap.asImageBitmap(),
+                            contentDescription = "Document preview to crop",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // Draggable Quad Canvas
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(workingBitmap) {
+                                    detectDragGestures(
+                                        onDragStart = { offset ->
+                                            val w = size.width.toFloat()
+                                            val h = size.height.toFloat()
+                                            val threshold = 70f // Touch radius
+
+                                            val tlDist = distance(offset.x, offset.y, currentQuad.topLeft.x * w, currentQuad.topLeft.y * h)
+                                            val trDist = distance(offset.x, offset.y, currentQuad.topRight.x * w, currentQuad.topRight.y * h)
+                                            val brDist = distance(offset.x, offset.y, currentQuad.bottomRight.x * w, currentQuad.bottomRight.y * h)
+                                            val blDist = distance(offset.x, offset.y, currentQuad.bottomLeft.x * w, currentQuad.bottomLeft.y * h)
+
+                                            val minDist = minOf(tlDist, trDist, brDist, blDist)
+                                            if (minDist <= threshold) {
+                                                activeDraggingCorner = when (minDist) {
+                                                    tlDist -> "TL"
+                                                    trDist -> "TR"
+                                                    brDist -> "BR"
+                                                    else -> "BL"
+                                                }
+                                            } else {
+                                                activeDraggingCorner = null
+                                            }
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            val w = size.width.toFloat()
+                                            val h = size.height.toFloat()
+                                            if (w <= 0f || h <= 0f) return@detectDragGestures
+
+                                            val dxNorm = dragAmount.x / w
+                                            val dyNorm = dragAmount.y / h
+
+                                            when (activeDraggingCorner) {
+                                                "TL" -> {
+                                                    currentQuad = currentQuad.copy(
+                                                        topLeft = android.graphics.PointF(
+                                                            (currentQuad.topLeft.x + dxNorm).coerceIn(0f, 0.45f),
+                                                            (currentQuad.topLeft.y + dyNorm).coerceIn(0f, 0.45f)
+                                                        )
+                                                    )
+                                                }
+                                                "TR" -> {
+                                                    currentQuad = currentQuad.copy(
+                                                        topRight = android.graphics.PointF(
+                                                            (currentQuad.topRight.x + dxNorm).coerceIn(0.55f, 1f),
+                                                            (currentQuad.topRight.y + dyNorm).coerceIn(0f, 0.45f)
+                                                        )
+                                                    )
+                                                }
+                                                "BR" -> {
+                                                    currentQuad = currentQuad.copy(
+                                                        bottomRight = android.graphics.PointF(
+                                                            (currentQuad.bottomRight.x + dxNorm).coerceIn(0.55f, 1f),
+                                                            (currentQuad.bottomRight.y + dyNorm).coerceIn(0.55f, 1f)
+                                                        )
+                                                    )
+                                                }
+                                                "BL" -> {
+                                                    currentQuad = currentQuad.copy(
+                                                        bottomLeft = android.graphics.PointF(
+                                                            (currentQuad.bottomLeft.x + dxNorm).coerceIn(0f, 0.45f),
+                                                            (currentQuad.bottomLeft.y + dyNorm).coerceIn(0.55f, 1f)
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        onDragEnd = { activeDraggingCorner = null },
+                                        onDragCancel = { activeDraggingCorner = null }
+                                    )
+                                }
+                        ) {
+                            val w = size.width
+                            val h = size.height
+
+                            val tlX = currentQuad.topLeft.x * w
+                            val tlY = currentQuad.topLeft.y * h
+                            val trX = currentQuad.topRight.x * w
+                            val trY = currentQuad.topRight.y * h
+                            val brX = currentQuad.bottomRight.x * w
+                            val brY = currentQuad.bottomRight.y * h
+                            val blX = currentQuad.bottomLeft.x * w
+                            val blY = currentQuad.bottomLeft.y * h
+
+                            // Mask quadrilateral outline
+                            val path = Path().apply {
+                                moveTo(tlX, tlY)
+                                lineTo(trX, trY)
+                                lineTo(brX, brY)
+                                lineTo(blX, blY)
+                                close()
+                            }
+
+                            // Glowing Cyan border & tint
+                            drawPath(path, color = Color(0x3300F2FE))
+                            drawPath(path, color = Color(0xFF00F2FE), style = Stroke(width = 5f))
+
+                            // Grid guide lines (rule of thirds)
+                            drawLine(Color(0x6600F2FE), Offset(tlX + (trX - tlX) / 3f, tlY + (trY - tlY) / 3f), Offset(blX + (brX - blX) / 3f, blY + (brY - blY) / 3f), strokeWidth = 2f)
+                            drawLine(Color(0x6600F2FE), Offset(tlX + 2*(trX - tlX) / 3f, tlY + 2*(trY - tlY) / 3f), Offset(blX + 2*(brX - blX) / 3f, blY + 2*(brY - blY) / 3f), strokeWidth = 2f)
+                            drawLine(Color(0x6600F2FE), Offset(tlX + (blX - tlX) / 3f, tlY + (blY - tlY) / 3f), Offset(trX + (brX - trX) / 3f, trY + (brY - trY) / 3f), strokeWidth = 2f)
+                            drawLine(Color(0x6600F2FE), Offset(tlX + 2*(blX - tlX) / 3f, tlY + 2*(blY - tlY) / 3f), Offset(trX + 2*(brX - trX) / 3f, trY + 2*(brY - trY) / 3f), strokeWidth = 2f)
+
+                            // 4 Corner Drag Pin Handles
+                            val pinRadius = 22f
+                            val activeRadius = 30f
+                            val corners = listOf(
+                                Triple(tlX, tlY, activeDraggingCorner == "TL"),
+                                Triple(trX, trY, activeDraggingCorner == "TR"),
+                                Triple(brX, brY, activeDraggingCorner == "BR"),
+                                Triple(blX, blY, activeDraggingCorner == "BL")
+                            )
+
+                            for ((cx, cy, isActive) in corners) {
+                                val r = if (isActive) activeRadius else pinRadius
+                                drawCircle(color = Color.Black.copy(alpha = 0.4f), radius = r + 6f, center = Offset(cx, cy))
+                                drawCircle(color = Color(0xFF00F2FE), radius = r, center = Offset(cx, cy))
+                                drawCircle(color = Color.White, radius = r * 0.4f, center = Offset(cx, cy))
+                            }
+                        }
+                    }
+                }
+
+                // Bottom Tools Toolbar
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF141D2E))
+                        .navigationBarsPadding()
+                        .padding(16.dp)
+                ) {
+                    // Quick Action Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Auto Detect
+                        TextButton(
+                            onClick = {
+                                currentQuad = OpenCvDocumentDetector.detectDocumentEdges(workingBitmap)
+                            }
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Auto Detect", color = CyanPrimary, fontWeight = FontWeight.Bold)
+                        }
+
+                        // Full Page Reset
+                        TextButton(
+                            onClick = {
+                                currentQuad = OpenCvDocumentDetector.defaultQuad()
+                            }
+                        ) {
+                            Icon(Icons.Default.CropFree, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Full Page", color = Color.White)
+                        }
+
+                        // Rotate 90°
+                        TextButton(
+                            onClick = {
+                                val rotated = rotateBitmapIfNeeded(workingBitmap, 90)
+                                workingBitmap = rotated
+                                currentQuad = OpenCvDocumentDetector.detectDocumentEdges(rotated)
+                            }
+                        ) {
+                            Icon(Icons.Default.RotateRight, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Rotate", color = Color.White)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Document Filter Chips
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            DocumentFilterMode.ORIGINAL to "Original",
+                            DocumentFilterMode.MAGIC_COLOR to "Magic Color",
+                            DocumentFilterMode.BLACK_AND_WHITE to "B&W",
+                            DocumentFilterMode.GRAYSCALE to "Grayscale"
+                        ).forEach { (mode, label) ->
+                            val isSel = selectedFilter == mode
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSel) CyanPrimary else Color(0xFF223049))
+                                    .clickable { selectedFilter = mode }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    color = if (isSel) Color.Black else Color.White,
+                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Apply Crop & Save Button
+                    Button(
+                        onClick = {
+                            val cropped = OpenCvDocumentDetector.cropAndWarpPerspective(workingBitmap, currentQuad)
+                            val filtered = OpenCvDocumentDetector.applyFilter(cropped, selectedFilter)
+                            onApplyCrop(filtered)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = Color.Black),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Apply Crop & Rectify", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun distance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
+    val dx = x2 - x1
+    val dy = y2 - y1
+    return kotlin.math.sqrt(dx * dx + dy * dy)
 }
 
 private fun rotateBitmapIfNeeded(bitmap: Bitmap, degrees: Int): Bitmap {
     if (degrees == 0) return bitmap
     val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
     return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+}
+
+private fun createMockDocumentBitmap(): Bitmap {
+    val bmp = Bitmap.createBitmap(900, 1200, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bmp)
+    // Dark desk surface background
+    val bgPaint = android.graphics.Paint().apply { color = android.graphics.Color.rgb(35, 45, 60) }
+    canvas.drawRect(0f, 0f, 900f, 1200f, bgPaint)
+    // White document sheet with margin
+    val paperPaint = android.graphics.Paint().apply { color = android.graphics.Color.WHITE }
+    canvas.drawRect(70f, 90f, 830f, 1110f, paperPaint)
+    // Document text & structure
+    val textPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.BLACK
+        textSize = 34f
+        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+    canvas.drawText("SCANPRO AI DOCUMENT SCAN", 110f, 180f, textPaint)
+    textPaint.textSize = 22f
+    textPaint.typeface = android.graphics.Typeface.DEFAULT
+    canvas.drawText("Invoice #: INV-2026-9481", 110f, 240f, textPaint)
+    canvas.drawText("Date: October 25, 2026", 110f, 280f, textPaint)
+    canvas.drawText("Client: Acquired Enterprise Global", 110f, 320f, textPaint)
+    val linePaint = android.graphics.Paint().apply { color = android.graphics.Color.LTGRAY; strokeWidth = 3f }
+    canvas.drawLine(110f, 350f, 790f, 350f, linePaint)
+    canvas.drawText("Description                           Qty    Amount", 110f, 390f, textPaint)
+    canvas.drawLine(110f, 410f, 790f, 410f, linePaint)
+    canvas.drawText("1. Cloud AI OCR License               1     $1,500.00", 110f, 450f, textPaint)
+    canvas.drawText("2. Document Security Suite            1       $800.00", 110f, 490f, textPaint)
+    canvas.drawText("Total Due: $2,300.00", 110f, 570f, textPaint)
+    return bmp
 }

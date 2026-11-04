@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -228,12 +229,17 @@ fun SetupWizardScreen(
     var deniedMessage by remember { mutableStateOf<String?>(null) }
     var showDeniedDialog by remember { mutableStateOf(false) }
 
-    val currentStep = steps[currentStepIndex]
+    val safeIndex = currentStepIndex.coerceIn(0, (steps.size - 1).coerceAtLeast(0))
+    val currentStep = steps.getOrElse(safeIndex) { steps.first() }
     val totalSteps = steps.size
     val progressFloat by animateFloatAsState(
-        targetValue = (currentStepIndex + 1).toFloat() / totalSteps.toFloat(),
+        targetValue = ((safeIndex + 1).toFloat() / totalSteps.toFloat()).coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
     )
+
+    BackHandler(enabled = currentStepIndex > 0) {
+        currentStepIndex = (currentStepIndex - 1).coerceAtLeast(0)
+    }
 
     // Check existing permissions on launch
     LaunchedEffect(Unit) {
@@ -627,7 +633,7 @@ fun SetupWizardScreen(
                     ) {
                         if (currentStepIndex > 0) {
                             OutlinedButton(
-                                onClick = { currentStepIndex-- },
+                                onClick = { if (currentStepIndex > 0) currentStepIndex-- },
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
