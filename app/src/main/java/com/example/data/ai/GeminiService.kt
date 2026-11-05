@@ -48,28 +48,36 @@ class GeminiService {
         }
     }
 
-    suspend fun extractTextFromImage(bitmap: Bitmap, language: String = "English"): String {
+    suspend fun extractTextFromImage(
+        bitmap: Bitmap,
+        language: String = "English"
+    ): String {
         if (!isConfigured()) {
             return "⚠️ DEMO MODE — no Gemini API key configured.\n\n" +
                 "This app cannot read your image without a real API key. Add your " +
                 "Gemini key to .env (see .env.example) to enable real OCR text extraction."
         }
 
-        val prompt = "Extract ALL visible text from this image exactly as it appears in $language, " +
-            "preserving line breaks and structure as closely as possible. " +
-            "Return ONLY the extracted text with no commentary, no markdown, and no extra formatting."
+        val prompt =
+            "Extract ALL visible text from this image exactly as it appears in $language, " +
+                "preserving line breaks and structure as closely as possible. " +
+                "Return ONLY the extracted text with no commentary, no markdown, and no extra formatting."
 
         return generateContent(prompt, bitmap)
     }
 
-    suspend fun generateContent(prompt: String, bitmap: Bitmap? = null): String = withContext(Dispatchers.IO) {
+    suspend fun generateContent(
+        prompt: String,
+        bitmap: Bitmap? = null
+    ): String = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
 
         if (apiKey.isEmpty()) {
             return@withContext getOfflineResponse(prompt, bitmap)
         }
 
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
+        val url =
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
 
         try {
             val partsArray = JSONArray()
@@ -94,7 +102,10 @@ class GeminiService {
 
             val request = Request.Builder()
                 .url(url)
-                .post(jsonBody.toString().toRequestBody("application/json".toMediaType()))
+                .post(
+                    jsonBody.toString()
+                        .toRequestBody("application/json".toMediaType())
+                )
                 .build()
 
             val response = client.newCall(request).execute()
@@ -103,6 +114,7 @@ class GeminiService {
             if (response.isSuccessful && responseString.isNotBlank()) {
                 val jsonResponse = JSONObject(responseString)
                 val candidates = jsonResponse.optJSONArray("candidates")
+
                 if (candidates != null && candidates.length() > 0) {
                     for (i in 0 until candidates.length()) {
                         val candidate = candidates.optJSONObject(i)
@@ -111,13 +123,20 @@ class GeminiService {
 
                         if (parts != null) {
                             val sb = StringBuilder()
+
                             for (j in 0 until parts.length()) {
                                 val part = parts.optJSONObject(j)
                                 val text = part?.optString("text", "")
-                                if (text.isNotBlank()) sb.append(text).append("\n\n")
+
+                                if (text?.isNotBlank() == true) {
+                                    sb.append(text).append("\n\n")
+                                }
                             }
+
                             val result = sb.toString().trim()
-                            if (result.isNotEmpty()) return@withContext result
+                            if (result.isNotEmpty()) {
+                                return@withContext result
+                            }
                         }
                     }
                 }
@@ -129,31 +148,35 @@ class GeminiService {
         }
     }
 
-    suspend fun summarizeDocument(text: String): String = withContext(Dispatchers.IO) {
-        val apiKey = getApiKey()
+    suspend fun summarizeDocument(text: String): String =
+        withContext(Dispatchers.IO) {
+            val apiKey = getApiKey()
 
-        if (apiKey.isEmpty()) {
-            return@withContext "Offline summary: ${text.take(240)}"
+            if (apiKey.isEmpty()) {
+                return@withContext "Offline summary: ${text.take(240)}"
+            }
+
+            val prompt = """
+                Summarize the following document clearly and concisely.
+                Keep the result readable, useful, and professional.
+                Do not add any markdown.
+
+                Document:
+                $text
+            """.trimIndent()
+
+            try {
+                val raw = generateText(prompt)
+                if (raw.isNotBlank()) raw else "Summary unavailable."
+            } catch (e: Exception) {
+                "Summary unavailable."
+            }
         }
 
-        val prompt = """
-            Summarize the following document clearly and concisely.
-            Keep the result readable, useful, and professional.
-            Do not add any markdown.
-            
-            Document:
-            $text
-        """.trimIndent()
-
-        try {
-            val raw = generateText(prompt)
-            if (raw.isNotBlank()) raw else "Summary unavailable."
-        } catch (e: Exception) {
-            "Summary unavailable."
-        }
-    }
-
-    suspend fun askDocumentQuestion(context: String, question: String): String = withContext(Dispatchers.IO) {
+    suspend fun askDocumentQuestion(
+        context: String,
+        question: String
+    ): String = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
 
         if (apiKey.isEmpty()) {
@@ -173,13 +196,17 @@ class GeminiService {
 
         try {
             val raw = generateText(prompt)
-            if (raw.isNotBlank()) raw else "No answer found in the provided context."
+            if (raw.isNotBlank()) raw
+            else "No answer found in the provided context."
         } catch (e: Exception) {
             "No answer found in the provided context."
         }
     }
 
-    suspend fun translateDocument(text: String, targetLang: String): String = withContext(Dispatchers.IO) {
+    suspend fun translateDocument(
+        text: String,
+        targetLang: String
+    ): String = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
 
         if (apiKey.isEmpty()) {
@@ -202,64 +229,85 @@ class GeminiService {
         }
     }
 
-    private suspend fun generateText(prompt: String): String = withContext(Dispatchers.IO) {
-        val apiKey = getApiKey()
+    private suspend fun generateText(prompt: String): String =
+        withContext(Dispatchers.IO) {
+            val apiKey = getApiKey()
 
-        if (apiKey.isEmpty()) {
-            return@withContext "Offline mode: no API key configured."
-        }
-
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
-
-        try {
-            val jsonBody = JSONObject().apply {
-                put("contents", JSONArray().put(
-                    JSONObject().put("parts", JSONArray().put(
-                        JSONObject().put("text", prompt)
-                    ))
-                ))
+            if (apiKey.isEmpty()) {
+                return@withContext "Offline mode: no API key configured."
             }
 
-            val request = Request.Builder()
-                .url(url)
-                .post(jsonBody.toString().toRequestBody("application/json".toMediaType()))
-                .build()
+            val url =
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
 
-            val response = client.newCall(request).execute()
-            val responseString = response.body?.string() ?: ""
+            try {
+                val jsonBody = JSONObject().apply {
+                    put(
+                        "contents",
+                        JSONArray().put(
+                            JSONObject().put(
+                                "parts",
+                                JSONArray().put(
+                                    JSONObject().put("text", prompt)
+                                )
+                            )
+                        )
+                    )
+                }
 
-            if (response.isSuccessful && responseString.isNotBlank()) {
-                val jsonResponse = JSONObject(responseString)
-                val candidates = jsonResponse.optJSONArray("candidates")
-                if (candidates != null) {
-                    for (i in 0 until candidates.length()) {
-                        val candidate = candidates.optJSONObject(i)
-                        val content = candidate?.optJSONObject("content")
-                        val parts = content?.optJSONArray("parts")
-                        if (parts != null) {
-                            val result = buildString {
-                                for (j in 0 until parts.length()) {
-                                    val part = parts.optJSONObject(j)
-                                    val text = part?.optString("text", "")
-                                    if (text.isNotBlank()) {
-                                        append(text)
+                val request = Request.Builder()
+                    .url(url)
+                    .post(
+                        jsonBody.toString()
+                            .toRequestBody("application/json".toMediaType())
+                    )
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseString = response.body?.string() ?: ""
+
+                if (response.isSuccessful && responseString.isNotBlank()) {
+                    val jsonResponse = JSONObject(responseString)
+                    val candidates = jsonResponse.optJSONArray("candidates")
+
+                    if (candidates != null) {
+                        for (i in 0 until candidates.length()) {
+                            val candidate = candidates.optJSONObject(i)
+                            val content = candidate?.optJSONObject("content")
+                            val parts = content?.optJSONArray("parts")
+
+                            if (parts != null) {
+                                val result = buildString {
+                                    for (j in 0 until parts.length()) {
+                                        val part = parts.optJSONObject(j)
+                                        val text = part?.optString("text", "")
+
+                                        if (text?.isNotBlank() == true) {
+                                            append(text)
+                                        }
                                     }
+                                }.trim()
+
+                                if (result.isNotEmpty()) {
+                                    return@withContext result
                                 }
-                            }.trim()
-                            if (result.isNotEmpty()) return@withContext result
+                            }
                         }
                     }
                 }
+
+                "No answer generated."
+            } catch (e: Exception) {
+                "No answer generated."
             }
-
-            "No answer generated."
-        } catch (e: Exception) {
-            "No answer generated."
         }
-    }
 
-    private fun getOfflineResponse(prompt: String, bitmap: Bitmap? = null): String {
+    private fun getOfflineResponse(
+        prompt: String,
+        bitmap: Bitmap? = null
+    ): String {
         val hasImage = bitmap != null
+
         return if (hasImage) {
             "Offline OCR: image analysis is unavailable because no Gemini API key is configured."
         } else {
