@@ -11,6 +11,8 @@ plugins {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    arg("room.expandProjection", "true")
 }
 
 android {
@@ -27,29 +29,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        create("release") {
-            val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-            if (file(keystorePath).exists()) {
-                storeFile = file(keystorePath)
-                storePassword = System.getenv("STORE_PASSWORD")
-                keyAlias = "upload"
-                keyPassword = System.getenv("KEY_PASSWORD")
-            }
-        }
-
-        create("debugConfig") {
-            storeFile = file("${rootDir}/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
-
     buildTypes {
         debug {
             isDebuggable = true
-            signingConfig = signingConfigs.getByName("debugConfig")
+            // Android SDK ka default built-in debug signing use hoga
         }
 
         release {
@@ -59,13 +42,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-
-            if (
-                signingConfigs.findByName("release") != null &&
-                signingConfigs.getByName("release").storeFile?.exists() == true
-            ) {
-                signingConfig = signingConfigs.getByName("release")
-            }
         }
     }
 
