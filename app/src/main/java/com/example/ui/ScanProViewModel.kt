@@ -238,7 +238,7 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
     )
 
     val storageUsedBytes: StateFlow<Long?> = dao.getTotalStorageUsageBytes()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 125_000_000L)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
     // Active Document for Preview / Editing
     val activeDocument = MutableStateFlow<ScannedDocument?>(null)
@@ -266,106 +266,32 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
     val processingState = MutableStateFlow(ProcessingState())
 
     init {
-        // Seed initial documents and chat messages if empty
-        viewModelScope.launch {
-            dao.getDocumentCount().collect { count ->
-                if (count == 0) {
-                    seedInitialDocuments()
-                }
-            }
-        }
-        viewModelScope.launch {
-            val existingMsgs = chatDao.getAllChatMessages().first()
-            if (existingMsgs.isEmpty()) {
-                val initialList = listOf(
-                    ChatMessageEntity(
-                        id = "msg_1",
-                        sender = "ai",
-                        message = "👋 Hello! I'm ScanPro AI. You can ask me to summarize PDFs, translate text into 50+ languages, extract table data, or answer document questions! All your queries are cached locally in Room database for offline access.",
-                        timestamp = System.currentTimeMillis() - 600000
-                    ),
-                    ChatMessageEntity(
-                        id = "msg_2",
-                        sender = "user",
-                        message = "What can you do with scanned invoices?",
-                        timestamp = System.currentTimeMillis() - 300000
-                    ),
-                    ChatMessageEntity(
-                        id = "msg_3",
-                        sender = "ai",
-                        message = "📄 I can automatically extract line items, calculate totals, convert currencies, and summarize vendor payment terms into structured JSON or PDF!",
-                        timestamp = System.currentTimeMillis() - 120000
-                    )
-                )
-                chatDao.insertAll(initialList)
-            }
-        }
+        // No auto-seeding of documents or chat messages per user request.
     }
 
-    private suspend fun seedInitialDocuments() {
-        val app = getApplication<Application>()
-        val sample1File = PdfEngine.createPdfFromText(
-            app,
-            "AI_Scan_Contract_2026",
-            "SCANPRO AI MASTER SERVICE AGREEMENT\n\n1. Purpose: AI-Powered Document Management & Automation.\n2. Security: End-to-end cloud encryption, biometric vault protection.\n3. SLA: 99.99% OCR accuracy & sub-second processing speed."
-        )
-
-        val sample2File = PdfEngine.createPdfFromText(
-            app,
-            "Passport_ID_Scan",
-            "IDENTITY SCAN VERIFICATION\nName: Alex Vance\nID No: SP-992014-X\nStatus: Verified Premium Passport\nCountry: United States"
-        )
-
-        val sample3File = PdfEngine.createPdfFromText(
-            app,
-            "Quarterly_Financial_Report",
-            "Q2 FINANCIAL SUMMARY & INSIGHTS\nTotal Revenue: $4,250,000\nOperating Expense: $1,120,000\nNet Growth: +34% YoY\nAI Automated Savings: $420,000"
-        )
-
-        dao.insertDocument(
-            ScannedDocument(
-                title = "[Sample] AI_Scan_Contract_2026.pdf",
-                filePath = sample1File.absolutePath,
-                fileType = "PDF",
-                fileSizeBytes = sample1File.length(),
-                pageCount = 1,
-                category = "Documents",
-                extractedText = "SCANPRO AI MASTER SERVICE AGREEMENT 1. Purpose: AI-Powered Document Management",
-                summary = "[Sample data for demo purposes] Master Service Agreement covering AI-Powered Document Management, 99.99% OCR SLA, and cloud encryption.",
-                isFavorite = true,
-                createdAt = System.currentTimeMillis() - 86400000L
+    fun trySampleDocument() {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val sampleFile = PdfEngine.createPdfFromText(
+                app,
+                "Sample_Contract_2026",
+                "SCANPRO AI SAMPLE DOCUMENT\n\n1. Purpose: Document scanning and AI assistance.\n2. Features: OCR, PDF creation, secure vault, smart editing."
             )
-        )
-
-        dao.insertDocument(
-            ScannedDocument(
-                title = "[Sample] Passport_ID_Scan.pdf",
-                filePath = sample2File.absolutePath,
-                fileType = "PDF",
-                fileSizeBytes = sample2File.length(),
-                pageCount = 1,
-                category = "ID Card",
-                extractedText = "IDENTITY SCAN VERIFICATION Name: Alex Vance ID No: SP-992014-X",
-                summary = "[Sample data for demo purposes] Passport identity scan for Alex Vance. Verified status.",
-                isFavorite = false,
-                createdAt = System.currentTimeMillis() - 172800000L
+            dao.insertDocument(
+                ScannedDocument(
+                    title = "Sample_Contract_2026.pdf",
+                    filePath = sampleFile.absolutePath,
+                    fileType = "PDF",
+                    fileSizeBytes = sampleFile.length(),
+                    pageCount = 1,
+                    category = "Documents",
+                    extractedText = "SCANPRO AI SAMPLE DOCUMENT 1. Purpose: Document scanning and AI assistance.",
+                    summary = "Sample contract document generated on demand.",
+                    isFavorite = true,
+                    createdAt = System.currentTimeMillis()
+                )
             )
-        )
-
-        dao.insertDocument(
-            ScannedDocument(
-                title = "[Sample] Q2_Financial_Report.pdf",
-                filePath = sample3File.absolutePath,
-                fileType = "PDF",
-                fileSizeBytes = sample3File.length(),
-                pageCount = 1,
-                category = "Receipts",
-                extractedText = "Q2 FINANCIAL SUMMARY Revenue: $4,250,000 Net Growth: +34%",
-                summary = "[Sample data for demo purposes] Quarterly financial summary showing $4.25M revenue and +34% growth.",
-                isFavorite = true,
-                createdAt = System.currentTimeMillis() - 259200000L
-            )
-        )
+        }
     }
 
     // --- Document Actions ---

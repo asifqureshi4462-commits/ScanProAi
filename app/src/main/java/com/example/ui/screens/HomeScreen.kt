@@ -481,6 +481,13 @@ fun HomeScreen(
                             Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(40.dp))
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("No documents scanned yet", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            Spacer(modifier = Modifier.height(14.dp))
+                            androidx.compose.material3.Button(
+                                onClick = { viewModel.trySampleDocument() },
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Try a sample document")
+                            }
                         }
                     }
                 }
