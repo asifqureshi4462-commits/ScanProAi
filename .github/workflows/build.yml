@@ -15,41 +15,36 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
 
-      - name: Setup Gradle
+      - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.11.1'
+          gradle-version: '9.3.1'
 
       - name: Prepare Project and Gradlew
         run: |
-          # 1. Agar files 'ScanProAi-main' subfolder ke andar hain to unhe root par shift karo
+          # 1. Agar code subfolder mein ho to root par move karo
           if [ ! -f "settings.gradle.kts" ] && [ -d "ScanProAi-main" ]; then
-            echo "Project files found inside ScanProAi-main subfolder. Moving to root..."
+            echo "Moving files from ScanProAi-main to root..."
             shopt -s dotglob
             mv ScanProAi-main/* .
           fi
 
-          # 2. Agar gradlew file missing hai to automatically nayi generate karo
-          if [ ! -f "./gradlew" ]; then
-            echo "gradlew not found. Generating fresh wrapper..."
-            gradle wrapper
-          fi
-
-          # 3. Executable permission assign karo
+          # 2. Gradle wrapper ko 9.3.1 version ke sath regenerate karo
+          gradle wrapper --gradle-version 9.3.1
           chmod +x ./gradlew
 
-          # 4. .env file create karo (secrets plugin ke liye)
+          # 3. .env dummy secrets create karo
           echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env
           echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env.example
 
