@@ -17,7 +17,7 @@ ksp {
 
 android {
     namespace = "com.aistudio.scanproai.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.aistudio.scanproai.app"
@@ -32,7 +32,6 @@ android {
     buildTypes {
         debug {
             isDebuggable = true
-            // Android SDK ka default built-in debug signing use hoga
         }
 
         release {
