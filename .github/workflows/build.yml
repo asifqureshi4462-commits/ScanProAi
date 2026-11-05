@@ -20,20 +20,38 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
 
-      - name: Create Mock .env File
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Prepare Project and Gradlew
         run: |
+          # 1. Agar files 'ScanProAi-main' subfolder ke andar hain to unhe root par shift karo
+          if [ ! -f "settings.gradle.kts" ] && [ -d "ScanProAi-main" ]; then
+            echo "Project files found inside ScanProAi-main subfolder. Moving to root..."
+            shopt -s dotglob
+            mv ScanProAi-main/* .
+          fi
+
+          # 2. Agar gradlew file missing hai to automatically nayi generate karo
+          if [ ! -f "./gradlew" ]; then
+            echo "gradlew not found. Generating fresh wrapper..."
+            gradle wrapper
+          fi
+
+          # 3. Executable permission assign karo
+          chmod +x ./gradlew
+
+          # 4. .env file create karo (secrets plugin ke liye)
           echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env
           echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env.example
-
-      - name: Make Gradlew Executable
-        run: chmod +x ./gradlew
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace --no-daemon
@@ -42,5 +60,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ScanProAI-Debug-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: '**/build/outputs/apk/debug/*.apk'
           retention-days: 7
