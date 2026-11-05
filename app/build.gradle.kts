@@ -16,7 +16,8 @@ ksp {
 }
 
 android {
-    namespace = "com.aistudio.scanproai.app"
+    // Sahi namespace jo code imports (com.example.R) se match karta hai:
+    namespace = "com.example"
     compileSdk = 36
 
     defaultConfig {
