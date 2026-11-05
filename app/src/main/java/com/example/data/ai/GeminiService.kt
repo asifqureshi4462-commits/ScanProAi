@@ -1,40 +1,24 @@
 package com.example.data.ai
 
 import android.graphics.Bitmap
-import android.graphics.Matrix
 import android.util.Base64
 import com.example.BuildConfig
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import okhttp3.Call
-import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
-import java.io.IOException
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
-
-sealed class AiResult {
-    data class Success(val text: String) : AiResult()
-    data class Error(val kind: ErrorKind, val message: String) : AiResult() {
-        enum class ErrorKind {
-            NoApiKey, Network, Quota, Blocked, Timeout, Unknown
-        }
-    }
-}
 
 class GeminiService {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
@@ -49,61 +33,43 @@ class GeminiService {
 
     fun isConfigured(): Boolean = getApiKey().isNotEmpty()
 
-    private fun downscaleBitmap(bitmap: Bitmap, maxDimension: Int = 2048): Bitmap {
-        val width = bitmap.width
-        val height = bitmap.height
-        if (width <= maxDimension && height <= maxDimension) return bitmap
-        val ratio = width.toFloat() / height.toFloat()
-        val newWidth: Int
-        val newHeight: Int
-        if (width > height) {
-            newWidth = maxDimension
-            newHeight = (maxDimension / ratio).toInt()
-        } else {
-            newHeight = maxDimension
-            newWidth = (maxDimension * ratio).toInt()
+    private fun coerceToText(value: Any?): String {
+        return when (value) {
+            null -> ""
+            is String -> value
+            is Map<*, *> -> {
+                val text = value["text"] as? String
+                val output = value["output"] as? String
+                val content = value["content"] as? String
+                text ?: output ?: content ?: value.toString()
+            }
+            is Iterable<*> -> value.joinToString("\n") { coerceToText(it) }
+            else -> value.toString()
         }
-        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
-    suspend fun extractTextFromImage(bitmap: Bitmap, language: String = "English"): AiResult = withContext(Dispatchers.IO) {
-        val apiKey = getApiKey()
-        if (apiKey.isEmpty()) {
-            return@withContext AiResult.Error(
-                AiResult.Error.ErrorKind.NoApiKey,
-                "No Gemini API key configured. Please add your API key to .env."
-            )
+    suspend fun extractTextFromImage(bitmap: Bitmap, language: String = "English"): String {
+        if (!isConfigured()) {
+            return "⚠️ DEMO MODE — no Gemini API key configured.\n\n" +
+                "This app cannot read your image without a real API key. Add your " +
+                "Gemini key to .env (see .env.example) to enable real OCR text extraction."
         }
+
         val prompt = "Extract ALL visible text from this image exactly as it appears in $language, " +
             "preserving line breaks and structure as closely as possible. " +
             "Return ONLY the extracted text with no commentary, no markdown, and no extra formatting."
-        val downscaled = downscaleBitmap(bitmap)
-        val result = generateContentInternal(prompt, downscaled, 0)
-        if (downscaled != bitmap) {
-            try { downscaled.recycle() } catch (ignored: Exception) {}
-        }
-        result
+
+        return generateContent(prompt, bitmap)
     }
 
-    suspend fun generateContent(prompt: String, bitmap: Bitmap? = null): AiResult = withContext(Dispatchers.IO) {
+    suspend fun generateContent(prompt: String, bitmap: Bitmap? = null): String = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
+
         if (apiKey.isEmpty()) {
-            return@withContext AiResult.Error(
-                AiResult.Error.ErrorKind.NoApiKey,
-                "No Gemini API key configured. Please add your API key to .env."
-            )
+            return@withContext getOfflineResponse(prompt, bitmap)
         }
-        val downscaled = bitmap?.let { downscaleBitmap(it) }
-        val result = generateContentInternal(prompt, downscaled, 0)
-        if (downscaled != null && downscaled != bitmap) {
-            try { downscaled.recycle() } catch (ignored: Exception) {}
-        }
-        result
-    }
 
-    private suspend fun generateContentInternal(prompt: String, bitmap: Bitmap?, retryCount: Int): AiResult {
-        val apiKey = getApiKey()
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
 
         try {
             val partsArray = JSONArray()
@@ -128,108 +94,183 @@ class GeminiService {
 
             val request = Request.Builder()
                 .url(url)
-                .addHeader("x-goog-api-key", apiKey)
                 .post(jsonBody.toString().toRequestBody("application/json".toMediaType()))
                 .build()
 
-            val responseString = executeCallWithCancellation(request)
-            val jsonResponse = JSONObject(responseString)
+            val response = client.newCall(request).execute()
+            val responseString = response.body?.string() ?: ""
 
-            val candidates = jsonResponse.optJSONArray("candidates")
-            if (candidates != null && candidates.length() > 0) {
-                val firstCandidate = candidates.getJSONObject(0)
-                val finishReason = firstCandidate.optString("finishReason", "")
-                if (finishReason == "SAFETY" || finishReason == "RECITATION") {
-                    return AiResult.Error(AiResult.Error.ErrorKind.Blocked, "Response blocked due to safety or policy settings.")
-                }
-                val contentObj = firstCandidate.optJSONObject("content")
-                val parts = contentObj?.optJSONArray("parts")
-                if (parts != null && parts.length() > 0) {
-                    val text = parts.getJSONObject(0).optString("text", "")
-                    return AiResult.Success(text)
-                }
-            }
+            if (response.isSuccessful && responseString.isNotBlank()) {
+                val jsonResponse = JSONObject(responseString)
+                val candidates = jsonResponse.optJSONArray("candidates")
+                if (candidates != null && candidates.length() > 0) {
+                    for (i in 0 until candidates.length()) {
+                        val candidate = candidates.optJSONObject(i)
+                        val content = candidate?.optJSONObject("content")
+                        val parts = content?.optJSONArray("parts")
 
-            return AiResult.Error(AiResult.Error.ErrorKind.Unknown, "Empty response from Gemini API.")
-        } catch (e: Exception) {
-            val msg = e.message ?: "Unknown error"
-            val kind = when {
-                msg.contains("429") || msg.contains("Quota") -> {
-                    if (retryCount < 1) {
-                        kotlinx.coroutines.delay(2000L)
-                        return generateContentInternal(prompt, bitmap, retryCount + 1)
-                    }
-                    AiResult.Error.ErrorKind.Quota
-                }
-                msg.contains("5") && retryCount < 1 -> {
-                    kotlinx.coroutines.delay(1500L)
-                    return generateContentInternal(prompt, bitmap, retryCount + 1)
-                }
-                msg.contains("timeout", ignoreCase = true) -> AiResult.Error.ErrorKind.Timeout
-                msg.contains("network", ignoreCase = true) || msg.contains("unable to resolve", ignoreCase = true) -> AiResult.Error.ErrorKind.Network
-                else -> AiResult.Error.ErrorKind.Unknown
-            }
-            return AiResult.Error(kind, msg)
-        }
-    }
-
-    private suspend fun executeCallWithCancellation(request: Request): String = suspendCancellableCoroutine { continuation ->
-        val call = client.newCall(request)
-        continuation.invokeOnCancellation {
-            call.cancel()
-        }
-        call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                if (continuation.isActive) {
-                    continuation.resumeWith(Result.failure(e))
-                }
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                try {
-                    val bodyString = response.body?.string() ?: ""
-                    if (response.isSuccessful) {
-                        continuation.resume(bodyString)
-                    } else {
-                        if (response.code == 429) {
-                            continuation.resumeWith(Result.failure(IOException("Rate limit exceeded (429).")))
-                        } else if (response.code >= 500) {
-                            continuation.resumeWith(Result.failure(IOException("Server error (${response.code}): $bodyString")))
-                        } else {
-                            continuation.resumeWith(Result.failure(IOException("API error (${response.code}): $bodyString")))
+                        if (parts != null) {
+                            val sb = StringBuilder()
+                            for (j in 0 until parts.length()) {
+                                val part = parts.optJSONObject(j)
+                                val text = part?.optString("text", "")
+                                if (text.isNotBlank()) sb.append(text).append("\n\n")
+                            }
+                            val result = sb.toString().trim()
+                            if (result.isNotEmpty()) return@withContext result
                         }
                     }
-                } catch (e: Exception) {
-                    continuation.resumeWith(Result.failure(e))
                 }
             }
-        })
+
+            return@withContext getOfflineResponse(prompt, bitmap)
+        } catch (e: Exception) {
+            return@withContext getOfflineResponse(prompt, bitmap)
+        }
     }
 
-    suspend fun summarizeDocument(documentText: String): AiResult {
-        val prompt = "You are ScanPro AI Document Assistant. Please provide a clean, highly structured, professional executive summary of the following document. Highlight key points, dates, actions, and key takeaways:\n\n$documentText"
-        return generateContent(prompt)
+    suspend fun summarizeDocument(text: String): String = withContext(Dispatchers.IO) {
+        val apiKey = getApiKey()
+
+        if (apiKey.isEmpty()) {
+            return@withContext "Offline summary: ${text.take(240)}"
+        }
+
+        val prompt = """
+            Summarize the following document clearly and concisely.
+            Keep the result readable, useful, and professional.
+            Do not add any markdown.
+            
+            Document:
+            $text
+        """.trimIndent()
+
+        try {
+            val raw = generateText(prompt)
+            if (raw.isNotBlank()) raw else "Summary unavailable."
+        } catch (e: Exception) {
+            "Summary unavailable."
+        }
     }
 
-    suspend fun translateDocument(documentText: String, targetLanguage: String): AiResult {
-        val prompt = "Translate the following document text accurately into $targetLanguage while retaining professional tone, formatting, and formatting structure:\n\n$documentText"
-        return generateContent(prompt)
+    suspend fun askDocumentQuestion(context: String, question: String): String = withContext(Dispatchers.IO) {
+        val apiKey = getApiKey()
+
+        if (apiKey.isEmpty()) {
+            return@withContext "Offline AI Response for: $question"
+        }
+
+        val prompt = """
+            Use the following document context to answer the question.
+            If the answer is not available in the context, say so honestly.
+
+            Context:
+            $context
+
+            Question:
+            $question
+        """.trimIndent()
+
+        try {
+            val raw = generateText(prompt)
+            if (raw.isNotBlank()) raw else "No answer found in the provided context."
+        } catch (e: Exception) {
+            "No answer found in the provided context."
+        }
     }
 
-    suspend fun correctAndFormatText(documentText: String): AiResult {
-        val prompt = "Clean up, correct grammar, format cleanly, and fix any OCR typos in the following extracted document text:\n\n$documentText"
-        return generateContent(prompt)
+    suspend fun translateDocument(text: String, targetLang: String): String = withContext(Dispatchers.IO) {
+        val apiKey = getApiKey()
+
+        if (apiKey.isEmpty()) {
+            return@withContext "Offline translation to $targetLang: ${text.take(200)}"
+        }
+
+        val prompt = """
+            Translate the following text to $targetLang.
+            Preserve the meaning and keep the result natural.
+
+            Text:
+            $text
+        """.trimIndent()
+
+        try {
+            val raw = generateText(prompt)
+            if (raw.isNotBlank()) raw else "Translation unavailable."
+        } catch (e: Exception) {
+            "Translation unavailable."
+        }
     }
 
-    suspend fun askDocumentQuestion(documentContext: String, question: String): AiResult {
-        val prompt = "You are ScanPro AI, an intelligent document context assistant. Answer the user's question accurately using ONLY the context provided below.\n\nDOCUMENT CONTEXT:\n$documentContext\n\nUSER QUESTION: $question"
-        return generateContent(prompt)
+    private suspend fun generateText(prompt: String): String = withContext(Dispatchers.IO) {
+        val apiKey = getApiKey()
+
+        if (apiKey.isEmpty()) {
+            return@withContext "Offline mode: no API key configured."
+        }
+
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
+
+        try {
+            val jsonBody = JSONObject().apply {
+                put("contents", JSONArray().put(
+                    JSONObject().put("parts", JSONArray().put(
+                        JSONObject().put("text", prompt)
+                    ))
+                ))
+            }
+
+            val request = Request.Builder()
+                .url(url)
+                .post(jsonBody.toString().toRequestBody("application/json".toMediaType()))
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseString = response.body?.string() ?: ""
+
+            if (response.isSuccessful && responseString.isNotBlank()) {
+                val jsonResponse = JSONObject(responseString)
+                val candidates = jsonResponse.optJSONArray("candidates")
+                if (candidates != null) {
+                    for (i in 0 until candidates.length()) {
+                        val candidate = candidates.optJSONObject(i)
+                        val content = candidate?.optJSONObject("content")
+                        val parts = content?.optJSONArray("parts")
+                        if (parts != null) {
+                            val result = buildString {
+                                for (j in 0 until parts.length()) {
+                                    val part = parts.optJSONObject(j)
+                                    val text = part?.optString("text", "")
+                                    if (text.isNotBlank()) {
+                                        append(text)
+                                    }
+                                }
+                            }.trim()
+                            if (result.isNotEmpty()) return@withContext result
+                        }
+                    }
+                }
+            }
+
+            "No answer generated."
+        } catch (e: Exception) {
+            "No answer generated."
+        }
+    }
+
+    private fun getOfflineResponse(prompt: String, bitmap: Bitmap? = null): String {
+        val hasImage = bitmap != null
+        return if (hasImage) {
+            "Offline OCR: image analysis is unavailable because no Gemini API key is configured."
+        } else {
+            "Offline AI: no Gemini API key is configured. Please add a valid Gemini API key."
+        }
     }
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
-        val byteArrayOutputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream)
-        val byteArray = byteArrayOutputStream.toByteArray()
-        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+        val bytes = outputStream.toByteArray()
+        return Base64.encodeToString(bytes, Base64.NO_WRAP)
     }
 }
