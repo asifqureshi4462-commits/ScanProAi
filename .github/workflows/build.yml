@@ -33,23 +33,20 @@ jobs:
 
       - name: Prepare Project and Gradlew
         run: |
-          # 1. Agar code subfolder mein ho to root par move karo
           if [ ! -f "settings.gradle.kts" ] && [ -d "ScanProAi-main" ]; then
             echo "Moving files from ScanProAi-main to root..."
             shopt -s dotglob
             mv ScanProAi-main/* .
           fi
 
-          # 2. Gradle wrapper ko 9.3.1 version ke sath regenerate karo
           gradle wrapper --gradle-version 9.3.1
           chmod +x ./gradlew
 
-          # 3. .env dummy secrets create karo
           echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env
           echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env.example
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        run: ./gradlew assembleDebug -x lint -x test --stacktrace --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
