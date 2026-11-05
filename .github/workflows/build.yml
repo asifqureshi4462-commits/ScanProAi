@@ -21,10 +21,10 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Set up Android SDK
+      - name: Set up Android SDK (Platform 36)
         uses: android-actions/setup-android@v4
         with:
-          packages: 'platform-tools'
+          packages: 'platform-tools platforms;android-36'
 
       - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
@@ -39,7 +39,6 @@ jobs:
             mv ScanProAi-main/* .
           fi
 
-          # Schemas folder create karo Room KSP ke liye
           mkdir -p app/schemas
 
           gradle wrapper --gradle-version 9.3.1
@@ -49,7 +48,7 @@ jobs:
           echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env.example
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug -x lint -x test --no-daemon --info
+        run: ./gradlew assembleDebug -x lint -x test --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
