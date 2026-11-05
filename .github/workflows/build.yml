@@ -31,13 +31,16 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Prepare Project and Gradlew
+      - name: Prepare Project and Environment
         run: |
           if [ ! -f "settings.gradle.kts" ] && [ -d "ScanProAi-main" ]; then
             echo "Moving files from ScanProAi-main to root..."
             shopt -s dotglob
             mv ScanProAi-main/* .
           fi
+
+          # Schemas folder create karo Room KSP ke liye
+          mkdir -p app/schemas
 
           gradle wrapper --gradle-version 9.3.1
           chmod +x ./gradlew
@@ -46,7 +49,7 @@ jobs:
           echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env.example
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug -x lint -x test --stacktrace --no-daemon
+        run: ./gradlew assembleDebug -x lint -x test --no-daemon --info
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
