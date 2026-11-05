@@ -85,8 +85,8 @@ fun DocumentPreviewScreen(
     val activeDocument by viewModel.activeDocument.collectAsState()
     val processingState by viewModel.processingState.collectAsState()
 
-    var selectedTab by remember { mutableStateOf(0) } // 0: PDF Page, 1: OCR Text, 2: AI Summary, 3: Translation
-    var selectedFilter by remember { mutableStateOf("Original") } // Original, Grayscale, B&W, Enhance, Invert
+    var selectedTab by remember { mutableStateOf(0) }
+    var selectedFilter by remember { mutableStateOf("Original") }
     var pageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isLoadingPage by remember { mutableStateOf(true) }
 
@@ -103,7 +103,10 @@ fun DocumentPreviewScreen(
     }
 
     if (doc == null) {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
             Text("No document selected", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
@@ -115,7 +118,6 @@ fun DocumentPreviewScreen(
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        // Top Toolbar Bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -155,7 +157,6 @@ fun DocumentPreviewScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Tabs
         TabRow(
             selectedTabIndex = selectedTab,
             containerColor = MaterialTheme.colorScheme.surface,
@@ -176,16 +177,14 @@ fun DocumentPreviewScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Content Area
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
             when (selectedTab) {
-                0 -> { // PDF Page View
+                0 -> {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Image Processing Filter Chips Row
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -296,7 +295,7 @@ fun DocumentPreviewScreen(
                     }
                 }
 
-                1 -> { // OCR Text View
+                1 -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -333,9 +332,7 @@ fun DocumentPreviewScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Button(
-                                    onClick = {
-                                        viewModel.exportAndShareDocumentWithOcr(doc, com.example.util.OcrPdfMode.HYBRID)
-                                    },
+                                    onClick = { viewModel.exportAndShareDocumentWithOcr(doc, com.example.util.OcrPdfMode.HYBRID) },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.primary,
                                         contentColor = MaterialTheme.colorScheme.onPrimary
@@ -365,7 +362,7 @@ fun DocumentPreviewScreen(
                     }
                 }
 
-                2 -> { // AI Summary View
+                2 -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -395,7 +392,7 @@ fun DocumentPreviewScreen(
                     }
                 }
 
-                3 -> { // AI Translation
+                3 -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -445,7 +442,6 @@ fun DocumentPreviewScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Quick Tools Bottom Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
