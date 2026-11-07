@@ -138,8 +138,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.example.data.local.ScannedDocument
 import com.example.ui.ScanProViewModel
@@ -173,7 +171,7 @@ data class AllFeaturesGridItem(
 fun ScannerCameraScreen(
     viewModel: ScanProViewModel,
     onCloseScanner: () -> Unit,
-    onSaveSuccess: () -> Unit,
+    onNavigateToEditor: () -> Unit,
     onOpenToolDedicated: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -188,17 +186,12 @@ fun ScannerCameraScreen(
     var captureMode by remember { mutableStateOf(ScanCaptureMode.SINGLE) }
     var selectedRibbonMode by remember { mutableStateOf("Scan") }
 
-    // Active Dialog Overlays
+    // Overlays
     var showAllFeaturesSheet by remember { mutableStateOf(false) }
     var showFlashMenu by remember { mutableStateOf(false) }
     var showEnhancementPanel by remember { mutableStateOf(false) }
     var showResolutionPicker by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
-    var showSaveDialog by remember { mutableStateOf(false) }
-    var showCropAdjustDialog by remember { mutableStateOf(false) }
-
-    var editingBitmapIndex by remember { mutableStateOf<Int?>(null) }
-    var editingBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     var selectedFilterMode by remember { mutableStateOf(DocumentFilterMode.ORIGINAL) }
     var detectedQuad by remember { mutableStateOf<DocumentQuad?>(null) }
@@ -214,7 +207,6 @@ fun ScannerCameraScreen(
     var focusTapOffset by remember { mutableStateOf<Offset?>(null) }
     var zoomScale by remember { mutableFloatStateOf(1f) }
 
-    // Shutter Sound
     val mediaActionSound = remember { MediaActionSound().apply { load(MediaActionSound.SHUTTER_CLICK) } }
 
     var hasCameraPermission by remember {
@@ -285,6 +277,7 @@ fun ScannerCameraScreen(
                 withContext(Dispatchers.Main) {
                     imported.forEach { bmp -> viewModel.addCapturedBitmap(bmp) }
                     Toast.makeText(context, "Imported ${imported.size} image(s)", Toast.LENGTH_SHORT).show()
+                    onNavigateToEditor()
                 }
             }
         }
@@ -318,12 +311,6 @@ fun ScannerCameraScreen(
             }
         }
     }
-
-    var scanTitle by remember { mutableStateOf("Scan_${System.currentTimeMillis()}") }
-    var scanCategory by remember { mutableStateOf("Documents") }
-    var includeOcrInPdf by remember { mutableStateOf(true) }
-    var selectedOcrMode by remember { mutableStateOf(OcrPdfMode.HYBRID) }
-    var pdfPassword by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -624,7 +611,6 @@ fun ScannerCameraScreen(
                     }
                 }
 
-                // Mode Pill Selector: [ Single | Batch ]
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -730,7 +716,7 @@ fun ScannerCameraScreen(
                             Text("History", color = Color.White, fontSize = 11.sp)
                         }
 
-                        // Shutter Button
+                        // Shutter Button (Navigates directly to DocumentEditorScreen)
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
@@ -769,9 +755,7 @@ fun ScannerCameraScreen(
                                                     image.close()
                                                     isCapturing = false
 
-                                                    if (captureMode == ScanCaptureMode.SINGLE) {
-                                                        showSaveDialog = true
-                                                    }
+                                                    onNavigateToEditor()
                                                 }
 
                                                 override fun onError(exception: ImageCaptureException) {
@@ -785,9 +769,7 @@ fun ScannerCameraScreen(
                                         val mockBitmap = createMockDocumentBitmap()
                                         val filtered = OpenCvDocumentDetector.applyFilter(mockBitmap, selectedFilterMode)
                                         viewModel.addCapturedBitmap(filtered)
-                                        if (captureMode == ScanCaptureMode.SINGLE) {
-                                            showSaveDialog = true
-                                        }
+                                        onNavigateToEditor()
                                     }
                                 }
                         ) {
@@ -852,7 +834,7 @@ fun ScannerCameraScreen(
                                             "To Word" -> onOpenToolDedicated?.invoke("pdf_to_word")
                                             "Sign" -> onOpenToolDedicated?.invoke("sign")
                                             "ID Cards" -> onOpenToolDedicated?.invoke("id_card_scan")
-                                            "Smart Erase" -> Toast.makeText(context, "Smart Eraser tool selected for camera capture", Toast.LENGTH_SHORT).show()
+                                            "Smart Erase" -> onOpenToolDedicated?.invoke("smart_eraser")
                                             "Question" -> onOpenToolDedicated?.invoke("ocr")
                                             "Scan" -> Unit
                                         }
@@ -881,7 +863,7 @@ fun ScannerCameraScreen(
             }
         }
 
-        // 5. ALL FEATURES EXPANDABLE BOTTOM SHEET PANEL
+        // 5. ALL FEATURES EXPANDABLE BOTTOM SHEET
         AnimatedVisibility(
             visible = showAllFeaturesSheet,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -895,19 +877,20 @@ fun ScannerCameraScreen(
                         "scan" -> Unit
                         "id_cards" -> onOpenToolDedicated?.invoke("id_card_scan")
                         "book" -> onOpenToolDedicated?.invoke("book_scan")
-                        "timestamp" -> Toast.makeText(context, "Timestamp camera mode enabled", Toast.LENGTH_SHORT).show()
-                        "whiteboard" -> Toast.makeText(context, "Whiteboard glare-reduction mode enabled", Toast.LENGTH_SHORT).show()
-                        "slides" -> Toast.makeText(context, "Slide scan sequence mode enabled", Toast.LENGTH_SHORT).show()
+                        "timestamp" -> onOpenToolDedicated?.invoke("timestamp")
+                        "whiteboard" -> onOpenToolDedicated?.invoke("whiteboard")
+                        "slides" -> onOpenToolDedicated?.invoke("slides")
                         "to_word" -> onOpenToolDedicated?.invoke("pdf_to_word")
                         "to_excel" -> onOpenToolDedicated?.invoke("pdf_to_excel")
                         "sign" -> onOpenToolDedicated?.invoke("sign")
-                        "smart_eraser" -> Toast.makeText(context, "Smart Eraser ready", Toast.LENGTH_SHORT).show()
+                        "smart_eraser" -> onOpenToolDedicated?.invoke("smart_eraser")
                         "question_set" -> onOpenToolDedicated?.invoke("ocr")
                         "translate" -> onOpenToolDedicated?.invoke("ocr")
-                        "restore_photo" -> Toast.makeText(context, "Photo restoration mode enabled", Toast.LENGTH_SHORT).show()
+                        "restore_photo" -> onOpenToolDedicated?.invoke("smart_eraser")
                         "scan_code" -> onOpenToolDedicated?.invoke("qr_scan")
-                        "count_cam" -> Toast.makeText(context, "CountCam counter mode enabled", Toast.LENGTH_SHORT).show()
-                        "greeting_card" -> Toast.makeText(context, "Greeting card template mode enabled", Toast.LENGTH_SHORT).show()
+                        "count_cam" -> onOpenToolDedicated?.invoke("count_cam")
+                        "id_photo_maker" -> onOpenToolDedicated?.invoke("id_photo_maker")
+                        "greeting_card" -> Toast.makeText(context, "Greeting card template mode", Toast.LENGTH_SHORT).show()
                         "ai_chat" -> onOpenToolDedicated?.invoke("ai_chat")
                         else -> onOpenToolDedicated?.invoke(featureId)
                     }
@@ -1112,95 +1095,6 @@ fun ScannerCameraScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { showSettingsDialog = false }) { Text("Save & Close", color = Color(0xFF16C7B5), fontWeight = FontWeight.Bold) }
-                }
-            )
-        }
-
-        // 10. SAVE DOCUMENT DIALOG
-        if (showSaveDialog) {
-            AlertDialog(
-                onDismissRequest = { showSaveDialog = false },
-                containerColor = MaterialTheme.colorScheme.surface,
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Export Scanned PDF", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    }
-                },
-                text = {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        Text(
-                            text = "${capturedBitmaps.size} Page(s) Scanned • Ready to Export",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = scanTitle,
-                            onValueChange = { scanTitle = it },
-                            label = { Text("Title") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = pdfPassword,
-                            onValueChange = { pdfPassword = it },
-                            label = { Text("PDF PIN Protection (Optional)") },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                confirmButton = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = {
-                                showSaveDialog = false
-                                viewModel.saveScannedDocument(
-                                    title = scanTitle,
-                                    category = scanCategory,
-                                    includeOcr = includeOcrInPdf,
-                                    ocrMode = selectedOcrMode,
-                                    filterMode = selectedFilterMode,
-                                    shareAfterSaving = false,
-                                    password = pdfPassword.ifBlank { null }
-                                ) {
-                                    onSaveSuccess()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
-                        ) {
-                            Text("Save")
-                        }
-                        Button(
-                            onClick = {
-                                showSaveDialog = false
-                                viewModel.saveScannedDocument(
-                                    title = scanTitle,
-                                    category = scanCategory,
-                                    includeOcr = includeOcrInPdf,
-                                    ocrMode = selectedOcrMode,
-                                    filterMode = selectedFilterMode,
-                                    shareAfterSaving = true,
-                                    password = pdfPassword.ifBlank { null }
-                                ) {
-                                    onSaveSuccess()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16C7B5), contentColor = Color.Black)
-                        ) {
-                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Save & Share", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showSaveDialog = false }) { Text("Cancel") }
                 }
             )
         }
