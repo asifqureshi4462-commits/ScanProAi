@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Compress
+import androidx.compose.material.icons.filled.CropFree
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DocumentScanner
@@ -174,7 +175,7 @@ fun ToolsScreen(
         DedicatedToolItem("sign", "Sign PDF", "Draw e-signature onto document", "PDF", Icons.Default.Draw, Color(0xFFEC4899)),
 
         DedicatedToolItem("smart_eraser", "Smart Eraser", "Inpaint & remove unwanted marks", "ENHANCE", Icons.Default.AutoAwesome, Color(0xFF10B981)),
-        DedicatedToolItem("count_cam", "CountCam", "Count objects via camera touch", "ENHANCE", Icons.Default.CenterFocusStrong, Color(0xFFA855F7)),
+        DedicatedToolItem("count_cam", "CountCam", "Count objects via camera touch", "ENHANCE", Icons.Default.CropFree, Color(0xFFA855F7)),
         DedicatedToolItem("pdf_to_jpg", "PDF → JPG", "Render pages as HD image files", "CONVERT", Icons.Default.Image, Color(0xFFEC4899)),
         DedicatedToolItem("img2pdf", "JPG → PDF", "Combine photos into single PDF", "CONVERT", Icons.Default.PictureAsPdf, Color(0xFF0EA5E9)),
         DedicatedToolItem("word_to_pdf", "Word → PDF", "Render DOCX into PDF document", "CONVERT", Icons.Default.Description, Color(0xFF1D4ED8)),
