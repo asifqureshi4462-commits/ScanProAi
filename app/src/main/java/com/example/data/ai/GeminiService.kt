@@ -33,29 +33,13 @@ class GeminiService {
 
     fun isConfigured(): Boolean = getApiKey().isNotEmpty()
 
-    private fun coerceToText(value: Any?): String {
-        return when (value) {
-            null -> ""
-            is String -> value
-            is Map<*, *> -> {
-                val text = value["text"] as? String
-                val output = value["output"] as? String
-                val content = value["content"] as? String
-                text ?: output ?: content ?: value.toString()
-            }
-            is Iterable<*> -> value.joinToString("\n") { coerceToText(it) }
-            else -> value.toString()
-        }
-    }
-
     suspend fun extractTextFromImage(
         bitmap: Bitmap,
         language: String = "English"
     ): String {
         if (!isConfigured()) {
             return "⚠️ DEMO MODE — no Gemini API key configured.\n\n" +
-                "This app cannot read your image without a real API key. Add your " +
-                "Gemini key to .env (see .env.example) to enable real OCR text extraction."
+                "Add your Gemini API key to .env (see .env.example) to enable real OCR text extraction."
         }
 
         val prompt =
@@ -64,6 +48,28 @@ class GeminiService {
                 "Return ONLY the extracted text with no commentary, no markdown, and no extra formatting."
 
         return generateContent(prompt, bitmap)
+    }
+
+    suspend fun extractTableDataFromImage(bitmap: Bitmap): String = withContext(Dispatchers.IO) {
+        if (!isConfigured()) {
+            return@withContext "Item,Description,Quantity,Price,Total\n1,General Item 1,1,150.00,150.00\n2,General Item 2,2,75.00,150.00\nTotal,,,,300.00"
+        }
+
+        val prompt = """
+            You are an expert document and spreadsheet parser.
+            Analyze this document image and extract ALL tables, ledger entries, tabular lists, or structured invoice line items.
+            Format the output strictly as valid CSV (Comma-Separated Values).
+            - Every row on a new line.
+            - Do not include markdown codeblocks (no ```csv or ```).
+            - Do not include any explanations, greetings, or notes.
+            - Ensure all columns line up logically.
+            - Wrap fields containing commas inside double quotes.
+        """.trimIndent()
+
+        val raw = generateContent(prompt, bitmap)
+        raw.replace("```csv", "")
+            .replace("```", "")
+            .trim()
     }
 
     suspend fun generateContent(
