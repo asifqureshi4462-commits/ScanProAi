@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
@@ -35,17 +36,16 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -125,9 +125,8 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
 
     var currentDestination by remember { mutableStateOf(AppDestination.SPLASH) }
     var selectedTab by remember { mutableStateOf(0) } // 0: Home, 1: Files, 2: Scan, 3: Tools, 4: Profile
+    var activeToolFromScanner by remember { mutableStateOf<String?>(null) }
 
-    // Real App Lock enforcement: re-locks whenever the app is backgrounded,
-    // and requires the user's real PIN (set in Profile) to get back in.
     val appLockEnabled by viewModel.appLockEnabled.collectAsState()
     var appLockPassed by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
@@ -142,7 +141,6 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
         }
     }
 
-    // Central BackHandler: Handles system hardware/gesture back button safely without closing app
     BackHandler(
         enabled = currentDestination != AppDestination.MAIN_TABS || (currentDestination == AppDestination.MAIN_TABS && selectedTab != 0)
     ) {
@@ -153,7 +151,6 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
         }
     }
 
-    // File Import Launcher
     val fileImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -248,7 +245,12 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
             ScannerCameraScreen(
                 viewModel = viewModel,
                 onCloseScanner = { currentDestination = AppDestination.MAIN_TABS },
-                onSaveSuccess = { currentDestination = AppDestination.MAIN_TABS }
+                onSaveSuccess = { currentDestination = AppDestination.MAIN_TABS },
+                onOpenToolDedicated = { toolId ->
+                    activeToolFromScanner = toolId
+                    selectedTab = 3
+                    currentDestination = AppDestination.MAIN_TABS
+                }
             )
         }
 
@@ -345,67 +347,68 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                     onUnlocked = { appLockPassed = true }
                 )
             } else {
-            Scaffold(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-                containerColor = MaterialTheme.colorScheme.background,
-                contentColor = MaterialTheme.colorScheme.onBackground,
-                contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                bottomBar = {
-                    BottomNavWithCenterFab(
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it },
-                        onCenterScanClicked = { currentDestination = AppDestination.SCANNER_CAMERA }
-                    )
-                }
-            ) { innerPadding ->
-                Box(
+                Scaffold(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = innerPadding.calculateBottomPadding())
-                        .statusBarsPadding()
-                ) {
-                    when (selectedTab) {
-                        0 -> HomeScreen(
-                            viewModel = viewModel,
-                            onNavigateToScan = { currentDestination = AppDestination.SCANNER_CAMERA },
-                            onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
-                            onNavigateToDocPreview = openDocumentDedicated,
-                            onNavigateToTools = { selectedTab = 3 },
-                            onImportFileClicked = { fileImportLauncher.launch("application/*") },
-                            onNavigateToProfile = { selectedTab = 4 }
-                        )
-
-                        1 -> FileManagerScreen(
-                            viewModel = viewModel,
-                            onOpenDocument = openDocumentDedicated
-                        )
-
-                        3 -> ToolsScreen(
-                            viewModel = viewModel,
-                            onNavigateToDocPreview = openDocumentDedicated,
-                            onNavigateToCamera = { currentDestination = AppDestination.SCANNER_CAMERA }
-                        )
-
-                        4 -> ProfileScreen(
-                            viewModel = viewModel,
-                            onNavigateToAuth = { currentDestination = AppDestination.AUTH },
-                            onNavigateToSetupWizard = { currentDestination = AppDestination.SETUP_WIZARD }
-                        )
-
-                        else -> HomeScreen(
-                            viewModel = viewModel,
-                            onNavigateToScan = { currentDestination = AppDestination.SCANNER_CAMERA },
-                            onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
-                            onNavigateToDocPreview = openDocumentDedicated,
-                            onNavigateToTools = { selectedTab = 3 },
-                            onImportFileClicked = { fileImportLauncher.launch("application/*") },
-                            onNavigateToProfile = { selectedTab = 4 }
+                        .background(MaterialTheme.colorScheme.background),
+                    containerColor = MaterialTheme.colorScheme.background,
+                    contentColor = MaterialTheme.colorScheme.onBackground,
+                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                    bottomBar = {
+                        BottomNavWithCenterFab(
+                            selectedTab = selectedTab,
+                            onTabSelected = { selectedTab = it },
+                            onCenterScanClicked = { currentDestination = AppDestination.SCANNER_CAMERA }
                         )
                     }
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = innerPadding.calculateBottomPadding())
+                            .statusBarsPadding()
+                    ) {
+                        when (selectedTab) {
+                            0 -> HomeScreen(
+                                viewModel = viewModel,
+                                onNavigateToScan = { currentDestination = AppDestination.SCANNER_CAMERA },
+                                onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
+                                onNavigateToDocPreview = openDocumentDedicated,
+                                onNavigateToTools = { selectedTab = 3 },
+                                onImportFileClicked = { fileImportLauncher.launch("application/*") },
+                                onNavigateToProfile = { selectedTab = 4 }
+                            )
+
+                            1 -> FileManagerScreen(
+                                viewModel = viewModel,
+                                onOpenDocument = openDocumentDedicated
+                            )
+
+                            3 -> ToolsScreen(
+                                viewModel = viewModel,
+                                initialToolId = activeToolFromScanner,
+                                onNavigateToDocPreview = openDocumentDedicated,
+                                onNavigateToCamera = { currentDestination = AppDestination.SCANNER_CAMERA }
+                            )
+
+                            4 -> ProfileScreen(
+                                viewModel = viewModel,
+                                onNavigateToAuth = { currentDestination = AppDestination.AUTH },
+                                onNavigateToSetupWizard = { currentDestination = AppDestination.SETUP_WIZARD }
+                            )
+
+                            else -> HomeScreen(
+                                viewModel = viewModel,
+                                onNavigateToScan = { currentDestination = AppDestination.SCANNER_CAMERA },
+                                onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
+                                onNavigateToDocPreview = openDocumentDedicated,
+                                onNavigateToTools = { selectedTab = 3 },
+                                onImportFileClicked = { fileImportLauncher.launch("application/*") },
+                                onNavigateToProfile = { selectedTab = 4 }
+                            )
+                        }
+                    }
                 }
-            }
             }
         }
     }
@@ -466,7 +469,6 @@ fun BottomNavWithCenterFab(
                 )
             )
 
-            // Center Floating Action Button
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -537,12 +539,6 @@ fun BottomNavWithCenterFab(
     }
 }
 
-/**
- * Real PIN lock gate. Shown whenever App Lock is enabled and the app was
- * just brought back to the foreground. The PIN is checked against the real
- * value saved in Profile > App Lock & Security (SharedPreferences) — there
- * is no bypass and no fixed/accepted code.
- */
 @Composable
 private fun AppLockScreen(
     onUnlock: (String) -> Boolean,
