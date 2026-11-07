@@ -75,6 +75,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.local.ScannedDocument
 import com.example.ui.screens.AiChatScreen
 import com.example.ui.screens.AuthScreen
+import com.example.ui.screens.DocumentEditorScreen
 import com.example.ui.screens.DocumentPreviewScreen
 import com.example.ui.screens.EpubZipScreen
 import com.example.ui.screens.ExcelEditorScreen
@@ -107,6 +108,7 @@ enum class AppDestination {
     SETUP_WIZARD,
     MAIN_TABS,
     SCANNER_CAMERA,
+    DOCUMENT_EDITOR,
     AI_CHAT,
     PDF_EDITOR,
     WORD_EDITOR,
@@ -212,7 +214,9 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
             ScannerCameraScreen(
                 viewModel = viewModel,
                 onCloseScanner = { currentDestination = AppDestination.MAIN_TABS },
-                onSaveSuccess = { currentDestination = AppDestination.MAIN_TABS },
+                onNavigateToEditor = {
+                    currentDestination = AppDestination.DOCUMENT_EDITOR
+                },
                 onOpenToolDedicated = { toolId ->
                     if (toolId == "import_files_screen") {
                         currentDestination = AppDestination.IMPORT_FILES
@@ -221,6 +225,24 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                         selectedTab = 3
                         currentDestination = AppDestination.MAIN_TABS
                     }
+                }
+            )
+        }
+
+        AppDestination.DOCUMENT_EDITOR -> {
+            DocumentEditorScreen(
+                viewModel = viewModel,
+                onBackToCamera = {
+                    currentDestination = AppDestination.SCANNER_CAMERA
+                },
+                onAddMorePages = {
+                    currentDestination = AppDestination.SCANNER_CAMERA
+                },
+                onSaveAndOpenDocument = { doc ->
+                    openDocumentDedicated(doc)
+                },
+                onExtractTextClicked = { doc ->
+                    currentDestination = AppDestination.DOC_PREVIEW
                 }
             )
         }
