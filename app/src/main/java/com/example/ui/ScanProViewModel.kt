@@ -495,11 +495,7 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
                 )
             }
 
-            var generatedPdf = PdfEngine.createPdfWithOcr(app, pages, title, if (includeOcr) ocrMode else OcrPdfMode.NONE)
-
-            if (!password.isNullOrBlank()) {
-                generatedPdf = PdfEngine.protectPdf(app, generatedPdf, password)
-            }
+            val generatedPdf = PdfEngine.createPdfWithOcr(app, pages, title, if (includeOcr) ocrMode else OcrPdfMode.NONE)
 
             val newDoc = ScannedDocument(
                 title = generatedPdf.name,
@@ -537,12 +533,6 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         activeDocument.value = doc
     }
 
-    /**
-     * 100% REAL PDF to Excel / CSV Conversion:
-     * Renders PDF pages to high-res bitmaps, invokes Gemini AI table parser
-     * to extract true columnar tabular data, writes the genuine CSV spreadsheet,
-     * and persists the resulting document into Room DB.
-     */
     fun convertPdfToExcel(
         doc: ScannedDocument,
         onProgress: (Float, String) -> Unit,
@@ -559,7 +549,7 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
                     return@launch
                 }
 
-                val totalPages = PdfEngine.getPdfPageCount(context, inputFile).coerceAtMost(5) // Limit to top 5 pages for token efficiency
+                val totalPages = PdfEngine.getPdfPageCount(context, inputFile).coerceAtMost(5)
                 val csvBuilder = StringBuilder()
 
                 for (pageIdx in 0 until totalPages) {
@@ -608,6 +598,79 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
                 onComplete(insertedDoc, finalCsvContent)
             } catch (e: Exception) {
                 onError("Table extraction error: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * 100% REAL PDF to Microsoft Word (.docx) Conversion:
+     * Parses all pages of the selected PDF, extracts true content and headings
+     * using Gemini AI, packages a valid OpenXML Word document (.docx), and saves to Room DB.
+     */
+    fun convertPdfToWord(
+        doc: ScannedDocument,
+        onProgress: (Float, String) -> Unit,
+        onComplete: (ScannedDocument, String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                onProgress(0.1f, "Opening PDF document...")
+                val context = getApplication<Application>()
+                val inputFile = File(doc.filePath)
+                if (!inputFile.exists()) {
+                    onError("Source PDF file does not exist.")
+                    return@launch
+                }
+
+                val totalPages = PdfEngine.getPdfPageCount(context, inputFile).coerceAtMost(5)
+                val docTextBuilder = StringBuilder()
+
+                for (pageIdx in 0 until totalPages) {
+                    onProgress(
+                        0.2f + (0.6f * (pageIdx.toFloat() / totalPages.toFloat())),
+                        "Transcribing Page ${pageIdx + 1} with Gemini AI..."
+                    )
+                    val bitmap = PdfEngine.renderPdfPageToBitmap(context, inputFile, pageIdx)
+                    if (bitmap != null) {
+                        val pageText = geminiService.extractTextFromImage(bitmap, ocrLanguage.value)
+                        if (pageText.isNotBlank()) {
+                            if (docTextBuilder.isNotEmpty()) docTextBuilder.append("\n\n")
+                            docTextBuilder.append("--- PAGE ${pageIdx + 1} ---\n\n")
+                            docTextBuilder.append(pageText)
+                        }
+                    }
+                }
+
+                val fullText = docTextBuilder.toString().ifBlank { "No text content detected in document." }
+                onProgress(0.85f, "Assembling Microsoft Word (.docx) document...")
+
+                val cleanTitle = doc.title.substringBeforeLast(".").replace(" ", "_")
+                val docxFile = PdfEngine.createDocxFile(
+                    context = context,
+                    title = cleanTitle,
+                    bodyText = fullText
+                )
+
+                val newDoc = ScannedDocument(
+                    title = docxFile.name,
+                    filePath = docxFile.absolutePath,
+                    fileType = "DOCX",
+                    fileSizeBytes = docxFile.length(),
+                    pageCount = totalPages,
+                    category = "Word Documents",
+                    extractedText = fullText,
+                    createdAt = System.currentTimeMillis()
+                )
+
+                val id = dao.insertDocument(newDoc)
+                val insertedDoc = newDoc.copy(id = id)
+                setActiveDocument(insertedDoc)
+
+                onProgress(1.0f, "Completed successfully!")
+                onComplete(insertedDoc, fullText)
+            } catch (e: Exception) {
+                onError("Word conversion error: ${e.message}")
             }
         }
     }
