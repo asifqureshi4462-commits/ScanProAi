@@ -16,7 +16,6 @@ ksp {
 }
 
 android {
-    // Sahi namespace jo code imports (com.example.R) se match karta hai:
     namespace = "com.example"
     compileSdk = 36
 
@@ -112,6 +111,7 @@ dependencies {
     implementation(libs.logging.interceptor)
     implementation(libs.okhttp)
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    implementation(libs.mlkit.barcode.scanning)
 
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.core)
