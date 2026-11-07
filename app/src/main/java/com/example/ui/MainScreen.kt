@@ -82,6 +82,7 @@ import com.example.ui.screens.FileManagerScreen
 import com.example.ui.screens.FilesScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ImageEditorScreen
+import com.example.ui.screens.ImportFilesScreen
 import com.example.ui.screens.OnboardingScreen
 import com.example.ui.screens.PdfViewerEditorScreen
 import com.example.ui.screens.PresentationViewerScreen
@@ -115,7 +116,8 @@ enum class AppDestination {
     TEXT_CODE_EDITOR,
     EPUB_READER,
     ZIP_MANAGER,
-    DOC_PREVIEW
+    DOC_PREVIEW,
+    IMPORT_FILES
 }
 
 @Composable
@@ -124,7 +126,7 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
     val isSetupCompleted by viewModel.isSetupWizardCompleted.collectAsState()
 
     var currentDestination by remember { mutableStateOf(AppDestination.SPLASH) }
-    var selectedTab by remember { mutableStateOf(0) } // 0: Home, 1: Files, 2: Scan, 3: Tools, 4: Profile
+    var selectedTab by remember { mutableStateOf(0) }
     var activeToolFromScanner by remember { mutableStateOf<String?>(null) }
 
     val appLockEnabled by viewModel.appLockEnabled.collectAsState()
@@ -148,41 +150,6 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
             currentDestination = AppDestination.MAIN_TABS
         } else if (selectedTab != 0) {
             selectedTab = 0
-        }
-    }
-
-    val fileImportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            try {
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val docsDir = File(context.filesDir, "imported")
-                if (!docsDir.exists()) docsDir.mkdirs()
-                val destFile = File(docsDir, "Imported_${System.currentTimeMillis()}.pdf")
-                FileOutputStream(destFile).use { out ->
-                    inputStream?.copyTo(out)
-                }
-
-                val doc = ScannedDocument(
-                    title = destFile.name,
-                    filePath = destFile.absolutePath,
-                    fileType = "PDF",
-                    fileSizeBytes = destFile.length(),
-                    pageCount = 1,
-                    category = "Documents",
-                    createdAt = System.currentTimeMillis()
-                )
-
-                CoroutineScope(Dispatchers.IO).launch {
-                    val db = com.example.data.local.ScanProDatabase.getDatabase(context)
-                    val id = db.documentDao().insertDocument(doc)
-                    viewModel.setActiveDocument(doc.copy(id = id))
-                }
-                Toast.makeText(context, "File imported successfully", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(context, "Error importing file: ${e.message}", Toast.LENGTH_LONG).show()
-            }
         }
     }
 
@@ -247,9 +214,23 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                 onCloseScanner = { currentDestination = AppDestination.MAIN_TABS },
                 onSaveSuccess = { currentDestination = AppDestination.MAIN_TABS },
                 onOpenToolDedicated = { toolId ->
-                    activeToolFromScanner = toolId
-                    selectedTab = 3
-                    currentDestination = AppDestination.MAIN_TABS
+                    if (toolId == "import_files_screen") {
+                        currentDestination = AppDestination.IMPORT_FILES
+                    } else {
+                        activeToolFromScanner = toolId
+                        selectedTab = 3
+                        currentDestination = AppDestination.MAIN_TABS
+                    }
+                }
+            )
+        }
+
+        AppDestination.IMPORT_FILES -> {
+            ImportFilesScreen(
+                viewModel = viewModel,
+                onBackClicked = { currentDestination = AppDestination.SCANNER_CAMERA },
+                onDocumentImported = { doc ->
+                    openDocumentDedicated(doc)
                 }
             )
         }
@@ -375,7 +356,7 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                                 onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
                                 onNavigateToDocPreview = openDocumentDedicated,
                                 onNavigateToTools = { selectedTab = 3 },
-                                onImportFileClicked = { fileImportLauncher.launch("application/*") },
+                                onImportFileClicked = { currentDestination = AppDestination.IMPORT_FILES },
                                 onNavigateToProfile = { selectedTab = 4 }
                             )
 
@@ -403,7 +384,7 @@ fun MainScreen(viewModel: ScanProViewModel = viewModel()) {
                                 onNavigateToAiChat = { currentDestination = AppDestination.AI_CHAT },
                                 onNavigateToDocPreview = openDocumentDedicated,
                                 onNavigateToTools = { selectedTab = 3 },
-                                onImportFileClicked = { fileImportLauncher.launch("application/*") },
+                                onImportFileClicked = { currentDestination = AppDestination.IMPORT_FILES },
                                 onNavigateToProfile = { selectedTab = 4 }
                             )
                         }
