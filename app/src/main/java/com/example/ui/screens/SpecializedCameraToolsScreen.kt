@@ -40,10 +40,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.CropFree
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material.icons.filled.Folder
@@ -65,8 +65,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -115,8 +118,8 @@ fun IdPhotoMakerToolScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var selectedFormat by remember { mutableStateOf("Passport (2x2 in)") } // Passport, Visa, Driving License
-    var selectedBgColor by remember { mutableStateOf("White") } // White, Blue, Light Gray
+    var selectedFormat by remember { mutableStateOf("Passport (2x2 in)") }
+    var selectedBgColor by remember { mutableStateOf("White") }
     var isGeneratingSheet by remember { mutableStateOf(false) }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -148,7 +151,6 @@ fun IdPhotoMakerToolScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Photo Preview & Selection Area
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1E2A)),
@@ -204,7 +206,6 @@ fun IdPhotoMakerToolScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Standard Formats
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0D1724)),
@@ -254,7 +255,6 @@ fun IdPhotoMakerToolScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Generate 3x4 Printable Grid Sheet
             Button(
                 onClick = {
                     val bmp = selectedBitmap
@@ -264,7 +264,6 @@ fun IdPhotoMakerToolScreen(
                     }
                     isGeneratingSheet = true
                     coroutineScope.launch(Dispatchers.IO) {
-                        // Generate a high-res 8-photo 2x4 layout printable canvas (A4 ratio)
                         val sheetW = 1200
                         val sheetH = 1600
                         val sheetBmp = Bitmap.createBitmap(sheetW, sheetH, Bitmap.Config.ARGB_8888)
@@ -286,7 +285,6 @@ fun IdPhotoMakerToolScreen(
                             strokeWidth = 2f
                         }
 
-                        // Title Banner on sheet
                         val titlePaint = Paint().apply {
                             color = AndroidColor.BLACK
                             textSize = 34f
@@ -294,7 +292,6 @@ fun IdPhotoMakerToolScreen(
                         }
                         canvas.drawText("ScanPro AI • Standard ID Photo Print Sheet ($selectedFormat)", startX.toFloat(), 90f, titlePaint)
 
-                        // Draw 2 rows of 4 photos (8 copies)
                         for (row in 0..1) {
                             for (col in 0..3) {
                                 val x = startX + col * (photoW + paddingX)
@@ -372,7 +369,7 @@ fun CountCamToolScreen(
         ToolHeader(
             title = "CountCam",
             description = "Touch or Auto-Count items, objects & items in document/photo",
-            icon = Icons.Default.CenterFocusStrong,
+            icon = Icons.Default.CropFree,
             iconColor = Color(0xFFA855F7),
             badgeText = "Object Counter",
             onBackClicked = onBackClicked
@@ -384,7 +381,6 @@ fun CountCamToolScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Counter Banner Display
             Card(
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1E2A)),
@@ -428,7 +424,6 @@ fun CountCamToolScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Interactive Counting Surface Canvas
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -456,7 +451,7 @@ fun CountCamToolScreen(
                         )
 
                         Canvas(modifier = Modifier.fillMaxSize()) {
-                            markerPoints.forEachIndexed { idx, point ->
+                            markerPoints.forEachIndexed { _, point ->
                                 drawCircle(color = Color(0xFF16C7B5), radius = 18f, center = point)
                                 drawCircle(color = Color.White, radius = 5f, center = point)
                             }
@@ -550,7 +545,6 @@ fun SmartEraserToolScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Interactive Eraser Canvas
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -580,7 +574,6 @@ fun SmartEraserToolScreen(
 
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             erasedPoints.forEach { pt ->
-                                // White inpainting stroke covering unwanted marks
                                 drawCircle(color = Color.White, radius = brushSize, center = pt)
                             }
                         }
@@ -603,7 +596,6 @@ fun SmartEraserToolScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Brush Size Slider Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -658,7 +650,6 @@ fun TimestampToolScreen(
     val context = LocalContext.current
     var customLabel by remember { mutableStateOf("VERIFIED DOCUMENT SCAN") }
     var showGps by remember { mutableStateOf(true) }
-    var selectedColor by remember { mutableStateOf("Cyan") } // Cyan, Yellow, White
 
     val formattedDate = remember {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
@@ -685,7 +676,6 @@ fun TimestampToolScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Preview Stamp Card
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1E2A)),
@@ -745,10 +735,10 @@ fun TimestampToolScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Include GPS Geolocation Coordinates", color = Color.White, fontSize = 13.sp)
-                    androidx.compose.material3.Switch(
+                    Switch(
                         checked = showGps,
                         onCheckedChange = { showGps = it },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF16C7B5))
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF16C7B5))
                     )
                 }
             }
