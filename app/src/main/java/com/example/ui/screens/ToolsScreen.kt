@@ -106,6 +106,12 @@ fun ToolsScreen(
         when (activeToolId) {
             "qr_scan", "scan_code", "barcode_scan" -> RealQrScannerScreen(onBackClicked = { activeToolId = null })
 
+            "pdf_to_excel", "to_excel" -> RealPdfToExcelToolScreen(
+                viewModel = viewModel,
+                onBackClicked = { activeToolId = null },
+                onNavigateToDocPreview = onNavigateToDocPreview
+            )
+
             "id_photo_maker" -> IdPhotoMakerToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null }, onNavigateToDocPreview = onNavigateToDocPreview)
             "count_cam" -> CountCamToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null })
             "smart_eraser" -> SmartEraserToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null })
@@ -150,6 +156,7 @@ fun ToolsScreen(
     }
 
     val allTools = listOf(
+        DedicatedToolItem("pdf_to_excel", "PDF → Excel", "Real AI Table & Column Extraction", "CONVERT", Icons.Default.TableChart, Color(0xFF10B981)),
         DedicatedToolItem("scan_code", "Scan Code", "Real QR & Barcode ML Kit scanner", "UTILITIES", Icons.Default.QrCodeScanner, Color(0xFF16C7B5)),
         DedicatedToolItem("scan_doc", "Document Scan", "Live edge detection camera scanner", "SCAN", Icons.Default.DocumentScanner, Color(0xFF06B6D4)),
         DedicatedToolItem("id_cards", "ID Cards", "Front & Back auto alignment", "SCAN", Icons.Default.Badge, Color(0xFFEC4899)),
@@ -215,7 +222,7 @@ fun ToolsScreen(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Search tools (sign, count, qr scan...)") },
+            placeholder = { Text("Search tools (excel, table, sign, count, qr...)") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
