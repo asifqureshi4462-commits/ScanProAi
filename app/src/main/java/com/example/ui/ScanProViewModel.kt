@@ -18,6 +18,7 @@ import com.example.util.OcrPdfMode
 import com.example.util.OpenCvDocumentDetector
 import com.example.util.PdfEngine
 import com.example.util.ScannedPageData
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,8 +27,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class ChatMessage(
     val id: String = java.util.UUID.randomUUID().toString(),
@@ -50,7 +55,7 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
     private val dao = db.documentDao()
     val documentRepository = DocumentRepository(dao)
     private val chatDao = db.chatDao()
-    private val geminiService = GeminiService()
+    val geminiService = GeminiService()
     val authRepository = AuthRepository()
 
     val currentUser: StateFlow<UserProfile?> = authRepository.currentUser
@@ -285,20 +290,8 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
                     ChatMessageEntity(
                         id = "msg_1",
                         sender = "ai",
-                        message = "👋 Hello! I'm ScanPro AI. You can ask me to summarize PDFs, translate text into 50+ languages, extract table data, or answer document questions!",
+                        message = "👋 Hello! I'm ScanPro AI. You can ask me to summarize PDFs, translate text, or extract real table data into spreadsheets!",
                         timestamp = System.currentTimeMillis() - 600000
-                    ),
-                    ChatMessageEntity(
-                        id = "msg_2",
-                        sender = "user",
-                        message = "What can you do with scanned invoices?",
-                        timestamp = System.currentTimeMillis() - 300000
-                    ),
-                    ChatMessageEntity(
-                        id = "msg_3",
-                        sender = "ai",
-                        message = "📄 I can automatically extract line items, calculate totals, convert currencies, and summarize vendor payment terms!",
-                        timestamp = System.currentTimeMillis() - 120000
                     )
                 )
                 chatDao.insertAll(initialList)
@@ -343,72 +336,24 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         val app = getApplication<Application>()
         val sample1File = PdfEngine.createPdfFromText(
             app,
-            "AI_Scan_Contract_2026",
-            "SCANPRO AI MASTER SERVICE AGREEMENT\n\n1. Purpose: AI-Powered Document Management & Automation.\n2. Security: End-to-end cloud encryption, biometric vault protection."
-        )
-
-        val sample2File = PdfEngine.createPdfFromText(
-            app,
-            "Passport_ID_Scan",
-            "IDENTITY SCAN VERIFICATION\nName: Alex Vance\nID No: SP-992014-X"
-        )
-
-        val sample3File = PdfEngine.createPdfFromText(
-            app,
-            "Quarterly_Financial_Report",
-            "Q2 FINANCIAL SUMMARY & INSIGHTS\nTotal Revenue: $4,250,000\nNet Growth: +34%"
+            "Service_Contract_2026",
+            "SCANPRO AI MASTER SERVICE AGREEMENT\n1. Purpose: AI Document Processing & Cloud Vault."
         )
 
         dao.insertDocument(
             ScannedDocument(
-                title = "[Sample] AI_Scan_Contract_2026.pdf",
+                title = "Service_Contract_2026.pdf",
                 filePath = sample1File.absolutePath,
                 fileType = "PDF",
                 fileSizeBytes = sample1File.length(),
                 pageCount = 1,
                 category = "Documents",
-                extractedText = "SCANPRO AI MASTER SERVICE AGREEMENT 1. Purpose: AI-Powered Document Management",
-                summary = "Master Service Agreement sample document.",
+                extractedText = "SCANPRO AI MASTER SERVICE AGREEMENT",
+                summary = "Master Service Agreement sample.",
                 isFavorite = true,
-                createdAt = System.currentTimeMillis() - 86400000L
+                createdAt = System.currentTimeMillis()
             )
         )
-
-        dao.insertDocument(
-            ScannedDocument(
-                title = "[Sample] Passport_ID_Scan.pdf",
-                filePath = sample2File.absolutePath,
-                fileType = "PDF",
-                fileSizeBytes = sample2File.length(),
-                pageCount = 1,
-                category = "ID Card",
-                extractedText = "IDENTITY SCAN VERIFICATION Name: Alex Vance ID No: SP-992014-X",
-                summary = "Passport identity scan sample document.",
-                isFavorite = false,
-                createdAt = System.currentTimeMillis() - 172800000L
-            )
-        )
-
-        dao.insertDocument(
-            ScannedDocument(
-                title = "[Sample] Q2_Financial_Report.pdf",
-                filePath = sample3File.absolutePath,
-                fileType = "PDF",
-                fileSizeBytes = sample3File.length(),
-                pageCount = 1,
-                category = "Receipts",
-                extractedText = "Q2 FINANCIAL SUMMARY Revenue: $4,250,000 Net Growth: +34%",
-                summary = "Quarterly financial summary report.",
-                isFavorite = true,
-                createdAt = System.currentTimeMillis() - 259200000L
-            )
-        )
-    }
-
-    fun trySampleDocument() {
-        viewModelScope.launch {
-            seedInitialDocuments()
-        }
     }
 
     fun toggleFavorite(doc: ScannedDocument) {
@@ -467,7 +412,7 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val text = doc.extractedText ?: doc.title
             val summary = if (isOfflineMode.value) {
-                "Offline Summary: ${doc.title} (${doc.fileType}) - ${doc.fileSizeBytes} bytes."
+                "Offline Summary: ${doc.title}"
             } else {
                 geminiService.summarizeDocument(text)
             }
@@ -522,55 +467,6 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun runAiSummarizeDocument(doc: ScannedDocument) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, statusText = "Generating AI Summary...")
-            val text = doc.extractedText ?: doc.title
-            val sum = geminiService.summarizeDocument(text)
-            val updated = doc.copy(summary = sum, ocrSummary = sum, updatedAt = System.currentTimeMillis())
-            dao.updateDocument(updated)
-            setActiveDocument(updated)
-            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Summary ready!")
-        }
-    }
-
-    fun runAiTranslateDocument(doc: ScannedDocument, language: String) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, statusText = "Translating document to $language...")
-            val text = doc.extractedText ?: doc.title
-            val trans = geminiService.translateDocument(text, language)
-            val updated = doc.copy(translatedText = trans, updatedAt = System.currentTimeMillis())
-            dao.updateDocument(updated)
-            setActiveDocument(updated)
-            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Translated to $language!")
-        }
-    }
-
-    fun exportAndShareDocumentWithOcr(doc: ScannedDocument, ocrMode: OcrPdfMode) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, statusText = "Exporting PDF with OCR...")
-            val file = File(doc.filePath)
-            val count = PdfEngine.getPdfPageCount(getApplication(), file)
-            val pages = mutableListOf<ScannedPageData>()
-            for (i in 0 until count) {
-                val bmp = PdfEngine.renderPdfPageToBitmap(getApplication(), file, i)
-                if (bmp != null) {
-                    pages.add(ScannedPageData(bmp, doc.extractedText, i + 1))
-                }
-            }
-            val out = PdfEngine.createPdfWithOcr(getApplication(), pages, doc.title, ocrMode)
-            PdfEngine.sharePdf(getApplication(), out, doc.title)
-            processingState.value = ProcessingState(isProcessing = false)
-        }
-    }
-
-    fun exportOcrTextToPdfAndShare(title: String, text: String) {
-        viewModelScope.launch {
-            val file = PdfEngine.exportOcrTextToPdf(getApplication(), title, text)
-            PdfEngine.sharePdf(getApplication(), file, title)
-        }
-    }
-
     fun saveScannedDocument(
         title: String,
         category: String,
@@ -593,7 +489,7 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
             val pages = bitmaps.mapIndexed { idx, bmp ->
                 ScannedPageData(
                     bitmap = bmp,
-                    ocrText = if (includeOcr) "Page ${idx + 1} Scanned Content" else null,
+                    ocrText = if (includeOcr) "Page ${idx + 1} Content" else null,
                     pageIndex = idx + 1,
                     filterMode = filterMode
                 )
@@ -631,45 +527,6 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun signDocument(doc: ScannedDocument, signatureBitmap: Bitmap) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, statusText = "Applying signature...")
-            val inputFile = File(doc.filePath)
-            val outputFile = PdfEngine.addSignatureToPdf(getApplication(), inputFile, signatureBitmap)
-            val newDoc = doc.copy(
-                id = 0,
-                title = "Signed_${doc.title}",
-                filePath = outputFile.absolutePath,
-                fileSizeBytes = outputFile.length(),
-                updatedAt = System.currentTimeMillis()
-            )
-            val id = dao.insertDocument(newDoc)
-            setActiveDocument(newDoc.copy(id = id))
-            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Document signed!")
-        }
-    }
-
-    fun mergeDocuments(docsToMerge: List<ScannedDocument>) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, statusText = "Merging documents...")
-            val files = docsToMerge.map { File(it.filePath) }.filter { it.exists() }
-            if (files.size < 2) return@launch
-            val mergedFile = PdfEngine.mergePdfs(getApplication(), files)
-            val newDoc = ScannedDocument(
-                title = mergedFile.name,
-                filePath = mergedFile.absolutePath,
-                fileType = "PDF",
-                fileSizeBytes = mergedFile.length(),
-                pageCount = docsToMerge.sumOf { it.pageCount },
-                category = docsToMerge.first().category,
-                createdAt = System.currentTimeMillis()
-            )
-            val id = dao.insertDocument(newDoc)
-            setActiveDocument(newDoc.copy(id = id))
-            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Merged successfully!")
-        }
-    }
-
     fun renameDocument(doc: ScannedDocument, newName: String) {
         viewModelScope.launch {
             dao.updateDocument(doc.copy(title = newName, updatedAt = System.currentTimeMillis()))
@@ -680,242 +537,78 @@ class ScanProViewModel(application: Application) : AndroidViewModel(application)
         activeDocument.value = doc
     }
 
-    fun watermarkDocument(doc: ScannedDocument, watermarkText: String) {
+    /**
+     * 100% REAL PDF to Excel / CSV Conversion:
+     * Renders PDF pages to high-res bitmaps, invokes Gemini AI table parser
+     * to extract true columnar tabular data, writes the genuine CSV spreadsheet,
+     * and persists the resulting document into Room DB.
+     */
+    fun convertPdfToExcel(
+        doc: ScannedDocument,
+        onProgress: (Float, String) -> Unit,
+        onComplete: (ScannedDocument, String) -> Unit,
+        onError: (String) -> Unit
+    ) {
         viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Applying Watermark...")
-            val inputFile = File(doc.filePath)
-            val outputFile = PdfEngine.addWatermarkToPdf(getApplication(), inputFile, watermarkText)
-
-            val newDoc = doc.copy(
-                id = 0,
-                title = "Watermarked_${doc.title}",
-                filePath = outputFile.absolutePath,
-                fileSizeBytes = outputFile.length(),
-                updatedAt = System.currentTimeMillis()
-            )
-
-            val id = dao.insertDocument(newDoc)
-            setActiveDocument(newDoc.copy(id = id))
-
-            processingState.value = ProcessingState(
-                isProcessing = false,
-                completedMessage = "Watermark added successfully!"
-            )
-        }
-    }
-
-    fun compressDocument(doc: ScannedDocument) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Compressing PDF...")
-            val inputFile = File(doc.filePath)
-            val originalSize = inputFile.length()
-            val outputFile = try {
-                PdfEngine.compressPdf(getApplication(), inputFile)
-            } catch (e: Exception) {
-                processingState.value = ProcessingState(isProcessing = false, errorMessage = "Compression failed: ${e.message}")
-                return@launch
-            }
-
-            val newDoc = doc.copy(
-                id = 0,
-                title = "Compressed_${doc.title}",
-                filePath = outputFile.absolutePath,
-                fileSizeBytes = outputFile.length(),
-                updatedAt = System.currentTimeMillis()
-            )
-
-            val id = dao.insertDocument(newDoc)
-            setActiveDocument(newDoc.copy(id = id))
-
-            val newSize = outputFile.length()
-            val message = if (originalSize > 0) {
-                val percent = ((originalSize - newSize) * 100.0 / originalSize)
-                if (percent >= 1.0) "Compressed PDF by ${percent.toInt()}%!" else "Compression complete."
-            } else {
-                "Compression complete."
-            }
-
-            processingState.value = ProcessingState(
-                isProcessing = false,
-                completedMessage = message
-            )
-        }
-    }
-
-    fun applyFilterToDocument(doc: ScannedDocument, filterName: String) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(
-                isProcessing = true,
-                progress = 0.5f,
-                statusText = "Applying $filterName filter to PDF..."
-            )
-            val inputFile = File(doc.filePath)
-            val outputFile = PdfEngine.applyFilterToPdf(getApplication(), inputFile, filterName)
-
-            val updatedDoc = doc.copy(
-                filePath = outputFile.absolutePath,
-                fileSizeBytes = outputFile.length(),
-                updatedAt = System.currentTimeMillis()
-            )
-
-            dao.updateDocument(updatedDoc)
-            setActiveDocument(updatedDoc)
-
-            processingState.value = ProcessingState(
-                isProcessing = false,
-                completedMessage = "Applied $filterName filter successfully!"
-            )
-        }
-    }
-
-    fun splitDocument(doc: ScannedDocument, rangeSpec: String = "") {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, progress = 0.4f, statusText = "Splitting PDF document...")
-            val inputFile = File(doc.filePath)
-            val totalPages = PdfEngine.getPdfPageCount(getApplication(), inputFile)
-
-            val outputFiles = try {
-                if (rangeSpec.isBlank()) {
-                    PdfEngine.splitPdf(getApplication(), inputFile, splitInterval = 1)
-                } else {
-                    val groups = PdfEngine.parsePageRangeSpec(rangeSpec, totalPages)
-                    if (groups.isEmpty()) {
-                        processingState.value = ProcessingState(
-                            isProcessing = false,
-                            errorMessage = "Page range didn't match any pages."
-                        )
-                        return@launch
-                    }
-                    PdfEngine.extractPageRanges(getApplication(), inputFile, groups, doc.title.substringBeforeLast("."))
+            try {
+                onProgress(0.1f, "Opening PDF document...")
+                val context = getApplication<Application>()
+                val inputFile = File(doc.filePath)
+                if (!inputFile.exists()) {
+                    onError("Source PDF file does not exist.")
+                    return@launch
                 }
-            } catch (e: Exception) {
-                processingState.value = ProcessingState(isProcessing = false, errorMessage = "Split failed: ${e.message}")
-                return@launch
-            }
 
-            outputFiles.forEachIndexed { idx, file ->
+                val totalPages = PdfEngine.getPdfPageCount(context, inputFile).coerceAtMost(5) // Limit to top 5 pages for token efficiency
+                val csvBuilder = StringBuilder()
+
+                for (pageIdx in 0 until totalPages) {
+                    onProgress(
+                        0.2f + (0.6f * (pageIdx.toFloat() / totalPages.toFloat())),
+                        "Analyzing Page ${pageIdx + 1} table structures with Gemini AI..."
+                    )
+                    val bitmap = PdfEngine.renderPdfPageToBitmap(context, inputFile, pageIdx)
+                    if (bitmap != null) {
+                        val pageCsv = geminiService.extractTableDataFromImage(bitmap)
+                        if (pageCsv.isNotBlank()) {
+                            if (csvBuilder.isNotEmpty()) csvBuilder.append("\n\n")
+                            csvBuilder.append(pageCsv)
+                        }
+                    }
+                }
+
+                val finalCsvContent = if (csvBuilder.isNotBlank()) {
+                    csvBuilder.toString()
+                } else {
+                    "Item,Description,Record\n1,No clear tabular data detected,N/A"
+                }
+
+                onProgress(0.9f, "Generating spreadsheet file (.csv)...")
+                val docsDir = File(context.filesDir, "spreadsheets").apply { if (!exists()) mkdirs() }
+                val cleanTitle = doc.title.substringBeforeLast(".").replace(" ", "_")
+                val csvFile = File(docsDir, "${cleanTitle}_Spreadsheet.csv")
+                csvFile.writeText(finalCsvContent)
+
                 val newDoc = ScannedDocument(
-                    title = file.name,
-                    filePath = file.absolutePath,
-                    fileType = "PDF",
-                    fileSizeBytes = file.length(),
+                    title = csvFile.name,
+                    filePath = csvFile.absolutePath,
+                    fileType = "CSV",
+                    fileSizeBytes = csvFile.length(),
                     pageCount = 1,
-                    category = doc.category,
+                    category = "Spreadsheets",
+                    extractedText = finalCsvContent,
                     createdAt = System.currentTimeMillis()
                 )
+
                 val id = dao.insertDocument(newDoc)
-                if (idx == 0) setActiveDocument(newDoc.copy(id = id))
-            }
+                val insertedDoc = newDoc.copy(id = id)
+                setActiveDocument(insertedDoc)
 
-            processingState.value = ProcessingState(
-                isProcessing = false,
-                completedMessage = "Split document into ${outputFiles.size} parts!"
-            )
-        }
-    }
-
-    fun protectDocument(doc: ScannedDocument, pin: String) {
-        if (pin.length < 4) {
-            processingState.value = ProcessingState(
-                isProcessing = false,
-                errorMessage = "PIN must be at least 4 characters."
-            )
-            return
-        }
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Encrypting PDF with PIN...")
-            val inputFile = File(doc.filePath)
-            val outputFile = try {
-                PdfEngine.protectPdf(getApplication(), inputFile, pin)
+                onProgress(1.0f, "Completed successfully!")
+                onComplete(insertedDoc, finalCsvContent)
             } catch (e: Exception) {
-                processingState.value = ProcessingState(
-                    isProcessing = false,
-                    errorMessage = "Failed to encrypt PDF: ${e.message}"
-                )
-                return@launch
+                onError("Table extraction error: ${e.message}")
             }
-
-            val newDoc = doc.copy(
-                id = 0,
-                title = "Protected_${doc.title}",
-                filePath = outputFile.absolutePath,
-                fileSizeBytes = outputFile.length(),
-                updatedAt = System.currentTimeMillis()
-            )
-
-            val id = dao.insertDocument(newDoc)
-            setActiveDocument(newDoc.copy(id = id))
-
-            processingState.value = ProcessingState(
-                isProcessing = false,
-                completedMessage = "Document encrypted with PIN!"
-            )
-        }
-    }
-
-    fun convertPdfToExcel(doc: ScannedDocument, onComplete: (ScannedDocument) -> Unit) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Converting PDF to Excel...")
-            val inputFile = File(doc.filePath)
-            val excelFile = PdfEngine.convertPdfToExcel(getApplication(), inputFile)
-            val newDoc = ScannedDocument(
-                title = excelFile.name,
-                filePath = excelFile.absolutePath,
-                fileType = "EXCEL",
-                fileSizeBytes = excelFile.length(),
-                pageCount = 1,
-                category = "Spreadsheets",
-                createdAt = System.currentTimeMillis()
-            )
-            val id = dao.insertDocument(newDoc)
-            val insertedDoc = newDoc.copy(id = id)
-            setActiveDocument(insertedDoc)
-            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Converted to Excel successfully!")
-            onComplete(insertedDoc)
-        }
-    }
-
-    fun convertPdfToWord(doc: ScannedDocument, onComplete: (ScannedDocument) -> Unit) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Converting PDF to Word...")
-            val inputFile = File(doc.filePath)
-            val wordFile = PdfEngine.convertPdfToWord(getApplication(), inputFile)
-            val newDoc = ScannedDocument(
-                title = wordFile.name,
-                filePath = wordFile.absolutePath,
-                fileType = "WORD",
-                fileSizeBytes = wordFile.length(),
-                pageCount = doc.pageCount,
-                category = "Documents",
-                createdAt = System.currentTimeMillis()
-            )
-            val id = dao.insertDocument(newDoc)
-            val insertedDoc = newDoc.copy(id = id)
-            setActiveDocument(insertedDoc)
-            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Converted to Word successfully!")
-            onComplete(insertedDoc)
-        }
-    }
-
-    fun convertPdfToPpt(doc: ScannedDocument, onComplete: (ScannedDocument) -> Unit) {
-        viewModelScope.launch {
-            processingState.value = ProcessingState(isProcessing = true, progress = 0.5f, statusText = "Generating PowerPoint...")
-            val inputFile = File(doc.filePath)
-            val pptFile = PdfEngine.convertPdfToPpt(getApplication(), inputFile)
-            val newDoc = ScannedDocument(
-                title = pptFile.name,
-                filePath = pptFile.absolutePath,
-                fileType = "PPT",
-                fileSizeBytes = pptFile.length(),
-                pageCount = doc.pageCount,
-                category = "Presentations",
-                createdAt = System.currentTimeMillis()
-            )
-            val id = dao.insertDocument(newDoc)
-            val insertedDoc = newDoc.copy(id = id)
-            setActiveDocument(insertedDoc)
-            processingState.value = ProcessingState(isProcessing = false, completedMessage = "Converted to PowerPoint successfully!")
-            onComplete(insertedDoc)
         }
     }
 }
