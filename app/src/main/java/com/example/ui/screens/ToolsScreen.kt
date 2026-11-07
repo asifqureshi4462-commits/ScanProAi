@@ -104,6 +104,8 @@ fun ToolsScreen(
 
     if (activeToolId != null) {
         when (activeToolId) {
+            "qr_scan", "scan_code", "barcode_scan" -> RealQrScannerScreen(onBackClicked = { activeToolId = null })
+
             "id_photo_maker" -> IdPhotoMakerToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null }, onNavigateToDocPreview = onNavigateToDocPreview)
             "count_cam" -> CountCamToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null })
             "smart_eraser" -> SmartEraserToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null })
@@ -125,8 +127,6 @@ fun ToolsScreen(
             "unlock" -> PdfUnlockScreen(viewModel = viewModel, onBackClicked = { activeToolId = null }, onNavigateToDocPreview = onNavigateToDocPreview)
             "pdf_to_jpg" -> PdfToImagesScreen(viewModel = viewModel, onBackClicked = { activeToolId = null }, onNavigateToDocPreview = onNavigateToDocPreview)
             "sign" -> SignPdfToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null }, onNavigateToDocPreview = onNavigateToDocPreview)
-            "qr_scan", "scan_code" -> QrCodeScannerToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null })
-            "barcode_scan" -> BarcodeScannerToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null })
             "id_cards", "id_card_scan", "passport_scan" -> SpecializedScanToolScreen(title = "ID & Passport Scanner", description = "Scan Front & Back sides into single PDF ID", icon = Icons.Default.Badge, viewModel = viewModel, onBackClicked = { activeToolId = null }, onNavigateToDocPreview = onNavigateToDocPreview)
             "book", "book_scan" -> BookScanToolScreen(viewModel = viewModel, onBackClicked = { activeToolId = null }, onNavigateToDocPreview = onNavigateToDocPreview)
             "receipt_scan" -> SpecializedScanToolScreen(title = "Receipt & Invoice Scanner", description = "Expense auto-categorization & receipt crop", icon = Icons.Default.ReceiptLong, viewModel = viewModel, onBackClicked = { activeToolId = null }, onNavigateToDocPreview = onNavigateToDocPreview)
@@ -150,6 +150,7 @@ fun ToolsScreen(
     }
 
     val allTools = listOf(
+        DedicatedToolItem("scan_code", "Scan Code", "Real QR & Barcode ML Kit scanner", "UTILITIES", Icons.Default.QrCodeScanner, Color(0xFF16C7B5)),
         DedicatedToolItem("scan_doc", "Document Scan", "Live edge detection camera scanner", "SCAN", Icons.Default.DocumentScanner, Color(0xFF06B6D4)),
         DedicatedToolItem("id_cards", "ID Cards", "Front & Back auto alignment", "SCAN", Icons.Default.Badge, Color(0xFFEC4899)),
         DedicatedToolItem("id_photo_maker", "ID Photo Maker", "Standard passport photo print sheet", "SCAN", Icons.Default.Badge, Color(0xFFA855F7)),
@@ -179,9 +180,7 @@ fun ToolsScreen(
         DedicatedToolItem("pdf_to_jpg", "PDF → JPG", "Render pages as HD image files", "CONVERT", Icons.Default.Image, Color(0xFFEC4899)),
         DedicatedToolItem("img2pdf", "JPG → PDF", "Combine photos into single PDF", "CONVERT", Icons.Default.PictureAsPdf, Color(0xFF0EA5E9)),
         DedicatedToolItem("word_to_pdf", "Word → PDF", "Render DOCX into PDF document", "CONVERT", Icons.Default.Description, Color(0xFF1D4ED8)),
-        DedicatedToolItem("excel_to_pdf", "Excel → PDF", "Export spreadsheets to PDF", "CONVERT", Icons.Default.TableChart, Color(0xFF059669)),
-
-        DedicatedToolItem("scan_code", "Scan Code", "QR & Barcode scanner", "UTILITIES", Icons.Default.QrCodeScanner, Color(0xFF16C7B5))
+        DedicatedToolItem("excel_to_pdf", "Excel → PDF", "Export spreadsheets to PDF", "CONVERT", Icons.Default.TableChart, Color(0xFF059669))
     )
 
     var query by remember { mutableStateOf("") }
@@ -216,7 +215,7 @@ fun ToolsScreen(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Search tools (sign, count, id photo, eraser...)") },
+            placeholder = { Text("Search tools (sign, count, qr scan...)") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
