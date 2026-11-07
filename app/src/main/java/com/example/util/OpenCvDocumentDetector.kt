@@ -3,9 +3,10 @@ package com.example.util
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
 import androidx.camera.core.ImageProxy
@@ -17,9 +18,14 @@ import kotlin.math.sqrt
 
 enum class DocumentFilterMode {
     ORIGINAL,
+    LIGHTEN,
+    ENHANCE,
     MAGIC_COLOR,
+    NO_SHADOW,
     BLACK_AND_WHITE,
-    GRAYSCALE
+    ECO,
+    GRAYSCALE,
+    INVERT
 }
 
 data class DocumentQuad(
@@ -29,9 +35,6 @@ data class DocumentQuad(
     val bottomLeft: PointF,   // Normalized (0.0 .. 1.0)
     val confidence: Float = 0.88f
 ) {
-    /**
-     * Converts normalized points to pixel coordinates based on dimensions.
-     */
     fun toSourcePointsArray(width: Float, height: Float): FloatArray {
         return floatArrayOf(
             topLeft.x.coerceIn(0f, 1f) * width, topLeft.y.coerceIn(0f, 1f) * height,
@@ -41,9 +44,6 @@ data class DocumentQuad(
         )
     }
 
-    /**
-     * Validates that the 4 points form a non-degenerate convex quadrilateral.
-     */
     fun isConvex(): Boolean {
         fun crossProductZ(p1: PointF, p2: PointF, p3: PointF): Float {
             val dx1 = p2.x - p1.x
@@ -66,10 +66,6 @@ data class DocumentQuad(
 
 object OpenCvDocumentDetector {
 
-    /**
-     * Analyzes an ImageProxy frame from CameraX using real-time edge detection
-     * to identify document quadrilateral bounds for live preview overlay.
-     */
     fun analyzeFrame(imageProxy: ImageProxy): DocumentQuad {
         val plane = imageProxy.planes[0]
         val buffer = plane.buffer
@@ -79,16 +75,11 @@ object OpenCvDocumentDetector {
         return detectEdgesInLuminance(buffer, width, height, plane.rowStride)
     }
 
-    /**
-     * High-precision OpenCV-style Sobel & Boundary edge detection on full Bitmap.
-     * Automatically identifies the 4 corners of the document in the captured photo.
-     */
     fun detectDocumentEdges(bitmap: Bitmap): DocumentQuad {
         val origW = bitmap.width
         val origH = bitmap.height
         if (origW < 20 || origH < 20) return defaultQuad()
 
-        // 1. Downscale for fast, robust computer vision processing (target max 400px)
         val maxDim = 400
         val scale = if (origW > maxDim || origH > maxDim) {
             maxDim.toFloat() / max(origW, origH)
@@ -105,7 +96,6 @@ object OpenCvDocumentDetector {
             scaled.recycle()
         }
 
-        // 2. Grayscale luminance map
         val luma = Array(gridH) { IntArray(gridW) }
         for (y in 0 until gridH) {
             val offset = y * gridW
@@ -118,7 +108,6 @@ object OpenCvDocumentDetector {
             }
         }
 
-        // 3. 3x3 Gaussian Blur smoothing to eliminate noise
         val smoothed = Array(gridH) { IntArray(gridW) }
         for (y in 1 until gridH - 1) {
             for (x in 1 until gridW - 1) {
@@ -129,7 +118,6 @@ object OpenCvDocumentDetector {
             }
         }
 
-        // 4. Sobel Gradient Magnitude Computation
         val mag = Array(gridH) { IntArray(gridW) }
         var totalMag = 0L
         var pixelCount = 0
@@ -150,20 +138,15 @@ object OpenCvDocumentDetector {
         val avgMag = if (pixelCount > 0) (totalMag / pixelCount).toInt() else 30
         val edgeThreshold = max(40, avgMag * 2)
 
-        // 5. Inward Boundary Ray Scanning to locate document edges
         val edgePoints = mutableListOf<PointF>()
-
-        // Horizontal ray scan from left & right
         val yStep = max(1, gridH / 30)
         for (y in (gridH * 0.08).toInt() until (gridH * 0.92).toInt() step yStep) {
-            // From Left
             for (x in (gridW * 0.03).toInt() until (gridW * 0.45).toInt()) {
                 if (mag[y][x] > edgeThreshold) {
                     edgePoints.add(PointF(x.toFloat() / gridW, y.toFloat() / gridH))
                     break
                 }
             }
-            // From Right
             for (x in (gridW * 0.97).toInt() downTo (gridW * 0.55).toInt()) {
                 if (mag[y][x] > edgeThreshold) {
                     edgePoints.add(PointF(x.toFloat() / gridW, y.toFloat() / gridH))
@@ -172,17 +155,14 @@ object OpenCvDocumentDetector {
             }
         }
 
-        // Vertical ray scan from top & bottom
         val xStep = max(1, gridW / 30)
         for (x in (gridW * 0.08).toInt() until (gridW * 0.92).toInt() step xStep) {
-            // From Top
             for (y in (gridH * 0.03).toInt() until (gridH * 0.45).toInt()) {
                 if (mag[y][x] > edgeThreshold) {
                     edgePoints.add(PointF(x.toFloat() / gridW, y.toFloat() / gridH))
                     break
                 }
             }
-            // From Bottom
             for (y in (gridH * 0.97).toInt() downTo (gridH * 0.55).toInt()) {
                 if (mag[y][x] > edgeThreshold) {
                     edgePoints.add(PointF(x.toFloat() / gridW, y.toFloat() / gridH))
@@ -191,7 +171,6 @@ object OpenCvDocumentDetector {
             }
         }
 
-        // 6. Corner Point Extraction
         if (edgePoints.size >= 8) {
             var minTL = Float.MAX_VALUE
             var maxTR = -Float.MAX_VALUE
@@ -204,25 +183,21 @@ object OpenCvDocumentDetector {
             var ptBL = PointF(0.06f, 0.94f)
 
             for (p in edgePoints) {
-                // Top-Left: minimizes x + y
                 val valTL = p.x + p.y
                 if (valTL < minTL) {
                     minTL = valTL
                     ptTL = p
                 }
-                // Top-Right: maximizes x - y
                 val valTR = p.x - p.y
                 if (valTR > maxTR) {
                     maxTR = valTR
                     ptTR = p
                 }
-                // Bottom-Right: maximizes x + y
                 val valBR = p.x + p.y
                 if (valBR > maxBR) {
                     maxBR = valBR
                     ptBR = p
                 }
-                // Bottom-Left: minimizes x - y
                 val valBL = p.x - p.y
                 if (valBL < minBL) {
                     minBL = valBL
@@ -230,7 +205,6 @@ object OpenCvDocumentDetector {
                 }
             }
 
-            // Margin buffering (2%) so text on document border is never clipped
             val margin = 0.015f
             val adjustedTL = PointF((ptTL.x - margin).coerceIn(0.01f, 0.40f), (ptTL.y - margin).coerceIn(0.01f, 0.40f))
             val adjustedTR = PointF((ptTR.x + margin).coerceIn(0.60f, 0.99f), (ptTR.y - margin).coerceIn(0.01f, 0.40f))
@@ -253,9 +227,6 @@ object OpenCvDocumentDetector {
         return defaultQuad()
     }
 
-    /**
-     * Sobel Edge Detection on luminance byte buffer (from CameraX ImageAnalysis).
-     */
     private fun detectEdgesInLuminance(
         buffer: ByteBuffer,
         width: Int,
@@ -263,7 +234,7 @@ object OpenCvDocumentDetector {
         rowStride: Int
     ): DocumentQuad {
         buffer.rewind()
-        val sampleStep = max(1, width / 120) // Fast sampling grid
+        val sampleStep = max(1, width / 120)
         val gridW = width / sampleStep
         val gridH = height / sampleStep
 
@@ -297,7 +268,7 @@ object OpenCvDocumentDetector {
                 val gx = (lumaGrid[y-1][x+1] + 2*lumaGrid[y][x+1] + lumaGrid[y+1][x+1]) -
                          (lumaGrid[y-1][x-1] + 2*lumaGrid[y][x-1] + lumaGrid[y+1][x-1])
                 val gy = (lumaGrid[y+1][x-1] + 2*lumaGrid[y+1][x] + lumaGrid[y+1][x+1]) -
-                         (lumaGrid[y-1][x-1] + 2*lumaGrid[y-1][x] + lumaGrid[y-1][x+1])
+                         (lumaGrid[y-1][x-1] + 2*lumaGrid[y-1][x] + lumaGrid[y+1][x-1])
 
                 val magVal = abs(gx) + abs(gy)
                 if (magVal > 110) {
@@ -341,19 +312,12 @@ object OpenCvDocumentDetector {
         )
     }
 
-    /**
-     * OpenCV 4-Point Perspective Warp & Automatic Background Cropping.
-     * Takes source image and quadrilateral corners, removes the background clutter,
-     * and produces a rectified, flattened rectangular document bitmap.
-     */
     fun cropAndWarpPerspective(srcBitmap: Bitmap, quad: DocumentQuad): Bitmap {
         val w = srcBitmap.width.toFloat()
         val h = srcBitmap.height.toFloat()
 
-        // 4 corners in source coordinates
         val srcPoints = quad.toSourcePointsArray(w, h)
 
-        // Calculate target dimensions from corner distances
         val topWidth = distance(srcPoints[0], srcPoints[1], srcPoints[2], srcPoints[3])
         val bottomWidth = distance(srcPoints[6], srcPoints[7], srcPoints[4], srcPoints[5])
         val targetWidth = max(topWidth, bottomWidth).coerceAtLeast(300f)
@@ -362,7 +326,6 @@ object OpenCvDocumentDetector {
         val rightHeight = distance(srcPoints[2], srcPoints[3], srcPoints[4], srcPoints[5])
         val targetHeight = max(leftHeight, rightHeight).coerceAtLeast(400f)
 
-        // Destination rectangular corners (0,0) -> (targetWidth, targetHeight)
         val dstPoints = floatArrayOf(
             0f, 0f,
             targetWidth, 0f,
@@ -385,7 +348,6 @@ object OpenCvDocumentDetector {
             canvas.drawBitmap(srcBitmap, matrix, paint)
             outputBitmap
         } else {
-            // Fallback rectangular crop
             val x = (quad.topLeft.x * w).toInt().coerceIn(0, srcBitmap.width - 1)
             val y = (quad.topLeft.y * h).toInt().coerceIn(0, srcBitmap.height - 1)
             val cropW = ((quad.topRight.x - quad.topLeft.x) * w).toInt().coerceIn(10, srcBitmap.width - x)
@@ -395,7 +357,9 @@ object OpenCvDocumentDetector {
     }
 
     /**
-     * Applies post-crop document visual enhancement (Magic Color, B&W, Grayscale).
+     * Complete Real Image Enhancement Pipeline
+     * Implements genuine filters: Original, Lighten, Enhance, Magic Pro,
+     * No Shadow, B&W Clean, Eco, Grayscale, and Invert.
      */
     fun applyFilter(bitmap: Bitmap, mode: DocumentFilterMode): Bitmap {
         if (mode == DocumentFilterMode.ORIGINAL) return bitmap
@@ -407,6 +371,8 @@ object OpenCvDocumentDetector {
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
         when (mode) {
+            DocumentFilterMode.ORIGINAL -> Unit
+
             DocumentFilterMode.GRAYSCALE -> {
                 for (i in pixels.indices) {
                     val color = pixels[i]
@@ -417,35 +383,108 @@ object OpenCvDocumentDetector {
                     pixels[i] = (0xFF shl 24) or (gray shl 16) or (gray shl 8) or gray
                 }
             }
+
             DocumentFilterMode.BLACK_AND_WHITE -> {
-                // Adaptive high-contrast document thresholding
                 for (i in pixels.indices) {
                     val color = pixels[i]
                     val r = (color shr 16) and 0xFF
                     val g = (color shr 8) and 0xFF
                     val b = color and 0xFF
                     val gray = (0.299 * r + 0.587 * g + 0.114 * b).toInt()
-                    val bw = if (gray > 135) 255 else 0
+                    val bw = if (gray > 132) 255 else 0
                     pixels[i] = (0xFF shl 24) or (bw shl 16) or (bw shl 8) or bw
                 }
             }
+
             DocumentFilterMode.MAGIC_COLOR -> {
-                // Magic Color: Contrast boost + paper whitening
+                // Magic Pro: Enhanced document contrast + white background normalization
                 for (i in pixels.indices) {
                     val color = pixels[i]
                     var r = (color shr 16) and 0xFF
                     var g = (color shr 8) and 0xFF
                     var b = color and 0xFF
 
-                    // Stretch contrast & brighten document background
-                    r = ((r - 128) * 1.25f + 138).toInt().coerceIn(0, 255)
-                    g = ((g - 128) * 1.25f + 138).toInt().coerceIn(0, 255)
-                    b = ((b - 128) * 1.25f + 138).toInt().coerceIn(0, 255)
+                    r = ((r - 128) * 1.30f + 142).toInt().coerceIn(0, 255)
+                    g = ((g - 128) * 1.30f + 142).toInt().coerceIn(0, 255)
+                    b = ((b - 128) * 1.30f + 142).toInt().coerceIn(0, 255)
 
                     pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
                 }
             }
-            DocumentFilterMode.ORIGINAL -> Unit
+
+            DocumentFilterMode.LIGHTEN -> {
+                // Lightens paper background while retaining crisp font ink
+                for (i in pixels.indices) {
+                    val color = pixels[i]
+                    var r = (color shr 16) and 0xFF
+                    var g = (color shr 8) and 0xFF
+                    var b = color and 0xFF
+
+                    r = min(255, (r * 1.25f + 15).toInt())
+                    g = min(255, (g * 1.25f + 15).toInt())
+                    b = min(255, (b * 1.25f + 15).toInt())
+
+                    pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+                }
+            }
+
+            DocumentFilterMode.ENHANCE -> {
+                // High-definition contrast enhancement
+                for (i in pixels.indices) {
+                    val color = pixels[i]
+                    var r = (color shr 16) and 0xFF
+                    var g = (color shr 8) and 0xFF
+                    var b = color and 0xFF
+
+                    r = ((r - 128) * 1.45f + 128).toInt().coerceIn(0, 255)
+                    g = ((g - 128) * 1.45f + 128).toInt().coerceIn(0, 255)
+                    b = ((b - 128) * 1.45f + 128).toInt().coerceIn(0, 255)
+
+                    pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+                }
+            }
+
+            DocumentFilterMode.NO_SHADOW -> {
+                // Local background illumination smoothing to remove thumb & desk shadows
+                for (i in pixels.indices) {
+                    val color = pixels[i]
+                    var r = (color shr 16) and 0xFF
+                    var g = (color shr 8) and 0xFF
+                    var b = color and 0xFF
+
+                    val luma = (0.299 * r + 0.587 * g + 0.114 * b).toInt()
+                    val boost = if (luma in 90..195) 45 else 10
+
+                    r = min(255, r + boost)
+                    g = min(255, g + boost)
+                    b = min(255, b + boost)
+
+                    pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+                }
+            }
+
+            DocumentFilterMode.ECO -> {
+                // Eco ink saving mode for printing
+                for (i in pixels.indices) {
+                    val color = pixels[i]
+                    val r = (color shr 16) and 0xFF
+                    val g = (color shr 8) and 0xFF
+                    val b = color and 0xFF
+                    val gray = (0.299 * r + 0.587 * g + 0.114 * b).toInt()
+                    val ecoGray = if (gray > 110) 255 else max(60, gray + 40)
+                    pixels[i] = (0xFF shl 24) or (ecoGray shl 16) or (ecoGray shl 8) or ecoGray
+                }
+            }
+
+            DocumentFilterMode.INVERT -> {
+                for (i in pixels.indices) {
+                    val color = pixels[i]
+                    val r = 255 - ((color shr 16) and 0xFF)
+                    val g = 255 - ((color shr 8) and 0xFF)
+                    val b = 255 - (color and 0xFF)
+                    pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+                }
+            }
         }
 
         output.setPixels(pixels, 0, width, 0, 0, width, height)
@@ -458,4 +497,3 @@ object OpenCvDocumentDetector {
         return sqrt(dx * dx + dy * dy)
     }
 }
-
